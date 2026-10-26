@@ -3,7 +3,7 @@ import { provideRouter } from '@angular/router';
 import { App } from './app';
 
 describe('Navegación', () => {
-  it('ofrece acceso a la gestión de vehículos', async () => {
+  it('ofrece acceso a la operación EA1', async () => {
     await TestBed.configureTestingModule({
       imports: [App],
       providers: [provideRouter([])],
@@ -11,8 +11,8 @@ describe('Navegación', () => {
     const fixture = TestBed.createComponent(App);
     fixture.detectChanges();
     expect(
-      (fixture.nativeElement as HTMLElement).querySelector('a[href="/gestion/vehiculos"]')
+      (fixture.nativeElement as HTMLElement).querySelector('nav a[href="/control-acceso"]')
         ?.textContent,
-    ).toBe('Vehículos');
+    ).toContain('Entrada y salida');
   });
 });

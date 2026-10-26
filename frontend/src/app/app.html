@@ -1,30 +1,15 @@
 <div class="page-shell">
   <header class="site-header">
-    <a class="brand" routerLink="/" aria-label="Autos Colombia, inicio">
-      <span class="brand-mark" aria-hidden="true">AC</span><span>Autos Colombia</span>
-    </a>
+    <a class="brand" routerLink="/control-acceso"
+      ><span class="brand-mark">P</span><span>Autos Colombia</span></a
+    >
     <nav aria-label="Navegación principal">
-      <a routerLink="/control-acceso" routerLinkActive="active" ariaCurrentWhenActive="page"
-        >Control de acceso</a
-      >
-      <a routerLink="/gestion/operadores" routerLinkActive="active" ariaCurrentWhenActive="page"
-        >Operadores</a
-      >
-      <a routerLink="/gestion/celdas" routerLinkActive="active" ariaCurrentWhenActive="page"
-        >Celdas</a
-      >
-      <a
-        routerLink="/"
-        routerLinkActive="active"
-        [routerLinkActiveOptions]="{ exact: true }"
-        ariaCurrentWhenActive="page"
-        >Inicio</a
-      >
-      <a routerLink="/gestion/vehiculos" routerLinkActive="active" ariaCurrentWhenActive="page"
-        >Vehículos</a
-      >
+      <a routerLink="/control-acceso" routerLinkActive="active">Entrada y salida de vehículos</a>
     </nav>
   </header>
   <main><router-outlet /></main>
-  <footer><span>Autos Colombia</span><span>Control vehicular con claridad.</span></footer>
+  <footer>
+    <span>Autos Colombia · Parqueadero por mensualidad</span
+    ><span>Operación · Colombia (UTC−5)</span>
+  </footer>
 </div>

@@ -3,31 +3,37 @@ import { HttpTestingController, provideHttpClientTesting } from '@angular/common
 import { TestBed } from '@angular/core/testing';
 import { ControlAcceso } from './control-acceso';
 
-describe('Control de acceso', () => {
+const cat = {
+  operadores: [{ id: 1, nombre: 'Ana' }],
+  celdas: [{ id: 1, codigo: 'A01', tipo: 'AUTOMOVIL_CAMIONETA', ocupada: false }],
+  resumen: { presentes: 0, libres: 80, inscritos: 4, motos_libres: 10, autos_libres: 70 },
+};
+const stay = {
+  id: 7,
+  placa: 'ABC123',
+  celda: 'A01',
+  celda_id: 1,
+  tipo: 'AUTOMOVIL',
+  cliente: 'Demo',
+  entrada: '2026-10-25T15:00:00Z',
+  salida: null,
+  operador_entrada: 'Ana',
+  operador_salida: null,
+};
+const state = {
+  placa: 'ABC123',
+  marca: 'Demo',
+  modelo: 2022,
+  color: 'Gris',
+  tipo: 'AUTOMOVIL',
+  cliente: 'Demo',
+  vigencia: { inicio: '2026-10-21T15:00:00Z', vencimiento: '2026-11-21T15:00:00Z' },
+  estancia: null,
+};
+
+describe('Operación EA1', () => {
   let http: HttpTestingController;
   let c: ControlAcceso;
-  const celda = { id: 2, codigo: 'TEST-C', tipo: 'Libre' };
-  const stay = {
-    id: 3,
-    vehiculo_id: 1,
-    celda_id: 2,
-    entrada: '2026-10-19T15:00:00Z',
-    salida: null,
-    operador_entrada_id: 4,
-    operador_salida_id: null,
-  };
-  const state = {
-    vehiculo: {
-      id: 1,
-      placa: 'TEST-A',
-      marca: 'Prueba',
-      color: 'Azul',
-      modelo: 2026,
-      tipo: 'MOTO',
-    },
-    esta_dentro: true,
-    estancia: { ...stay, celda },
-  };
   beforeEach(() => {
     TestBed.configureTestingModule({
       imports: [ControlAcceso],
@@ -35,100 +41,78 @@ describe('Control de acceso', () => {
     });
     http = TestBed.inject(HttpTestingController);
     c = TestBed.createComponent(ControlAcceso).componentInstance;
-    http
-      .expectOne('/celdas?offset=0&limit=100')
-      .flush({ items: [celda], total: 2, offset: 0, limit: 100 });
-    http
-      .expectOne('/celdas?offset=1&limit=100')
-      .flush({ items: [{ ...celda, id: 5 }], total: 2, offset: 1, limit: 100 });
-    http
-      .expectOne('/operadores?offset=0&limit=100')
-      .flush({
-        items: [{ id: 4, nombre: 'Prueba', telefono: '001' }],
-        total: 1,
-        offset: 0,
-        limit: 100,
-      });
+    http.expectOne('/operacion/catalogos').flush(cat);
   });
   afterEach(() => http.verify());
 
-  it('recorre todas las páginas y registra entrada normalizada sin fecha ni doble envío', () => {
-    expect(c.celdas().length).toBe(2);
-    c.entrada.setValue({ placa: ' test-a ', celda_id: 2, operador_id: 4 });
+  it('consulta la placa normalizada y asigna celda solo en el servidor', () => {
+    c.cambiarPlaca(' abc123 ');
+    c.buscar();
+    http.expectOne('/operacion/vehiculo/ABC123').flush(state);
     c.registrarEntrada();
     c.registrarEntrada();
-    const req = http.expectOne('/estancias/entrada');
-    expect(req.request.body).toEqual({ placa: 'TEST-A', celda_id: 2, operador_id: 4 });
+    const req = http.expectOne('/operacion/entrada');
+    expect(req.request.body).toEqual({ placa: 'ABC123', operador_id: 1 });
     req.flush(stay);
-    expect(c.exitoEntrada()).toContain('TEST-C');
-    expect(c.exitoEntrada()).toContain('Bogotá');
+    http.expectOne('/operacion/catalogos').flush(cat);
+    expect(c.comprobante()?.id).toBe(7);
+    expect(c.estado()).toBeNull();
   });
-  it('rechaza blancos y muestra los conflictos de ocupación y referencias', () => {
-    c.entrada.setValue({ placa: ' ', celda_id: 2, operador_id: 4 });
+  it('descarta una consulta al cambiar la placa', () => {
+    c.cambiarPlaca('ABC123');
+    c.buscar();
+    c.cambiarPlaca('DEF456');
+    http.expectOne('/operacion/vehiculo/ABC123').flush(state);
+    expect(c.estado()).toBeNull();
     c.registrarEntrada();
-    http.expectNone('/estancias/entrada');
-    for (const [status, detail] of [
-      [409, 'El vehículo ya está dentro.'],
-      [409, 'La celda está ocupada.'],
-      [404, 'Operador no encontrado.'],
-    ] as const) {
-      c.entrada.controls.placa.setValue('TEST-A');
-      c.registrarEntrada();
-      http.expectOne('/estancias/entrada').flush({ detail }, { status, statusText: 'Error' });
-      expect(c.errorEntrada()).toBe(detail);
-      expect(c.saving()).toBe(false);
-    }
+    http.expectNone('/operacion/entrada');
   });
-  it('descarta respuestas antiguas y no permite salida al cambiar de placa', () => {
-    c.consulta.setValue({ placa: 'TEST-A', operador_id: 4 });
-    c.buscar();
-    c.consulta.controls.placa.setValue('TEST-B');
-    http.expectOne('/estancias/vehiculo/TEST-A').flush(state);
-    expect(c.estado()).toBeNull();
+  it('bloquea un ingreso sin vigencia y exige comprobante o verificación de pérdida', () => {
+    c.estado.set({ ...state, vigencia: null });
+    c.registrarEntrada();
+    http.expectNone('/operacion/entrada');
+    c.estado.set({ ...state, estancia: stay });
     c.registrarSalida();
-    http.expectNone('/estancias/salida');
-    c.consulta.controls.placa.setValue('TEST-A');
-    c.buscar();
-    http.expectOne('/estancias/vehiculo/TEST-A').flush(state);
-    c.consulta.controls.placa.setValue('TEST-B');
-    expect(c.estado()).toBeNull();
+    http.expectNone('/operacion/salida');
+    c.perdido = true;
+    c.documento = 'DEMO-001';
+    c.motivo = 'Pérdida';
+    c.registrarSalida();
+    http.expectNone('/operacion/salida');
+    c.verificada = true;
+    c.registrarSalida();
+    const req = http.expectOne('/operacion/salida');
+    expect(req.request.body.identidad_verificada).toBe(true);
+    req.flush({ ...stay, salida: '2026-10-25T16:00:00Z' });
+    http.expectOne('/operacion/catalogos').flush(cat);
+    expect(c.mensaje()).toContain('liberada');
   });
-  it('consulta antes de salir, envía solo placa y operador y consulta fuera tras cerrar', () => {
-    c.consulta.setValue({ placa: 'test-a', operador_id: 4 });
-    c.buscar();
-    http.expectOne('/estancias/vehiculo/TEST-A').flush(state);
-    c.registrarSalida();
-    c.registrarSalida();
-    const req = http.expectOne('/estancias/salida');
-    expect(req.request.body).toEqual({ placa: 'TEST-A', operador_id: 4 });
-    req.flush({ ...stay, salida: '2026-10-19T16:00:00Z', operador_salida_id: 4 });
+  it('no repite escrituras y exige consultar tras un conflicto', () => {
+    c.estado.set(state);
+    c.registrarEntrada();
     http
-      .expectOne('/estancias/vehiculo/TEST-A')
-      .flush({ ...state, esta_dentro: false, estancia: null });
-    expect(c.estado()?.esta_dentro).toBe(false);
-    expect(c.exitoSalida()).toContain('Salida registrada');
-  });
-  it('distingue no registrado y conexión fallida e invalida salida rechazada', () => {
-    c.consulta.setValue({ placa: 'TEST-A', operador_id: 4 });
-    c.buscar();
-    http
-      .expectOne('/estancias/vehiculo/TEST-A')
-      .flush({}, { status: 404, statusText: 'Not Found' });
-    expect(c.errorConsulta()).toBe('Vehículo no registrado.');
-    c.buscar();
-    http.expectOne('/estancias/vehiculo/TEST-A').error(new ProgressEvent('error'));
-    expect(c.errorConsulta()).toContain('No se pudo conectar');
-    c.buscar();
-    http.expectOne('/estancias/vehiculo/TEST-A').flush(state);
-    c.registrarSalida();
-    http
-      .expectOne('/estancias/salida')
-      .flush({ detail: 'Sin estancia abierta.' }, { status: 409, statusText: 'Conflict' });
+      .expectOne('/operacion/entrada')
+      .flush({ detail: 'El vehículo ya está dentro.' }, { status: 409, statusText: 'Conflict' });
+    http.expectOne('/operacion/catalogos').flush(cat);
     expect(c.estado()).toBeNull();
-    expect(c.errorConsulta()).toContain('Consulta nuevamente');
+    expect(c.error()).toContain('ya está dentro');
   });
-  it('interpreta el offset recibido y presenta el mismo instante en Bogotá', () => {
-    expect(c.fecha('2026-10-19T15:00:00Z')).toBe(c.fecha('2026-10-19T10:00:00-05:00'));
-    expect(c.fecha('2026-10-19T15:00:00Z')).toContain('10:00:00');
+  it('filtra por fechas y placa con paginación', () => {
+    c.filtroPlaca = ' abc123 ';
+    c.desde = '2026-10-21';
+    c.hasta = '2026-10-25';
+    c.cambiarTab('historial');
+    const req = http.expectOne((r) => r.url === '/operacion/estancias');
+    expect(req.request.params.get('placa')).toBe('ABC123');
+    expect(req.request.params.get('desde')).toBe('2026-10-21');
+    req.flush({ items: [stay], total: 1, offset: 0, limit: 20 });
+    http.expectOne('/operacion/catalogos').flush(cat);
+    expect(c.lista().total).toBe(1);
+  });
+  it('reimprime el mismo número desde la API y usa hora de Bogotá', () => {
+    c.reimprimir(7);
+    http.expectOne('/operacion/comprobante/7').flush(stay);
+    expect(c.comprobante()?.id).toBe(7);
+    expect(c.fecha(stay.entrada)).toContain('10:00');
   });
 });

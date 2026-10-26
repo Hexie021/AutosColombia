@@ -1,156 +1,286 @@
-<section class="management" aria-labelledby="access-title">
+<section class="management">
   <header class="heading">
     <div>
-      <span class="eyebrow">AUTOS COLOMBIA</span>
-      <h1 id="access-title">Control de acceso</h1>
-      <p>Registra entradas, consulta vehículos y confirma salidas.</p>
+      <span class="eyebrow">OPERACIÓN DEL PARQUEADERO</span>
+      <h1>De entrada a salida</h1>
+      <p>Mensualidades por vehículo · Fechas y horas de Colombia</p>
     </div>
-  </header>
-  <section class="panel" aria-label="Catálogos">
-    <button type="button" (click)="cargarCatalogos()" [disabled]="catalogLoading() || saving()">
-      Actualizar catálogos
-    </button>
-    @if (catalogLoading()) {
-      <p role="status">Cargando todas las páginas de celdas y operadores…</p>
-    }
-    @if (catalogError()) {
-      <p role="alert" class="notice error">{{ catalogError() }}</p>
-    }
-    @if (!catalogLoading() && !catalogError()) {
-      <p>{{ celdas().length }} celdas · {{ operadores().length }} operadores.</p>
-      @if (!celdas().length || !operadores().length) {
-        <p>Registra celdas y operadores desde su gestión para poder seleccionarlos.</p>
-      }
-    }
-    <p class="hint">
-      Las celdas listadas no indican disponibilidad. La ocupación se validará al registrar la
-      entrada.
-    </p>
-  </section>
-  <section class="panel" aria-labelledby="entry-title">
-    <h2 id="entry-title">Registrar entrada</h2>
-    <form [formGroup]="entrada" (ngSubmit)="registrarEntrada()">
-      <fieldset [disabled]="busy() || catalogLoading() || !!catalogError()">
-        <legend class="sr-only">Datos de entrada</legend>
-        <div class="form-grid">
-          <div class="field">
-            <label for="entry-plate">Placa de entrada</label
-            ><input
-              id="entry-plate"
-              formControlName="placa"
-              type="text"
-              aria-describedby="entry-plate-error"
-            />
-            <span id="entry-plate-error" class="field-error">
-              @if (entrada.controls.placa.touched && entrada.controls.placa.invalid) {
-                La placa es obligatoria y no puede estar vacía.
-              }
-            </span>
-          </div>
-          <div class="field">
-            <label for="entry-cell">Celda</label
-            ><select id="entry-cell" formControlName="celda_id">
-              <option [ngValue]="null">Selecciona una celda</option>
-              @for (c of celdas(); track c.id) {
-                <option [ngValue]="c.id">{{ c.codigo }} · {{ c.tipo }}</option>
-              }
-            </select>
-            <span class="field-error">
-              @if (entrada.controls.celda_id.touched && entrada.controls.celda_id.invalid) {
-                Selecciona una celda.
-              }
-            </span>
-          </div>
-          <div class="field">
-            <label for="entry-operator">Operador de entrada</label
-            ><select id="entry-operator" formControlName="operador_id">
-              <option [ngValue]="null">Selecciona un operador</option>
-              @for (o of operadores(); track o.id) {
-                <option [ngValue]="o.id">{{ o.nombre }} · #{{ o.id }}</option>
-              }
-            </select>
-            <span class="field-error">
-              @if (entrada.controls.operador_id.touched && entrada.controls.operador_id.invalid) {
-                Selecciona un operador.
-              }
-            </span>
-          </div>
-        </div>
-        <button class="primary" type="submit">Registrar entrada</button>
-      </fieldset>
-    </form>
-    @if (errorEntrada()) {
-      <p class="notice error" role="alert">{{ errorEntrada() }}</p>
-    }
-    @if (exitoEntrada()) {
-      <p class="notice success" role="status">{{ exitoEntrada() }}</p>
-    }
-  </section>
-  <section class="panel" aria-labelledby="query-title">
-    <h2 id="query-title">Consultar vehículo y registrar salida</h2>
-    <form [formGroup]="consulta" (ngSubmit)="buscar()">
-      <fieldset [disabled]="saving()">
-        <legend class="sr-only">Consulta y salida</legend>
-        <div class="form-grid">
-          <div class="field">
-            <label for="query-plate">Placa a consultar</label
-            ><input id="query-plate" type="text" formControlName="placa" />
-            <span class="field-error">
-              @if (consulta.controls.placa.touched && consulta.controls.placa.invalid) {
-                La placa es obligatoria y no puede estar vacía.
-              }
-            </span>
-          </div>
-          <div class="field">
-            <label for="exit-operator">Operador de salida</label
-            ><select id="exit-operator" formControlName="operador_id">
-              <option [ngValue]="null">Selecciona un operador</option>
-              @for (o of operadores(); track o.id) {
-                <option [ngValue]="o.id">{{ o.nombre }} · #{{ o.id }}</option>
-              }
-            </select>
-            <span class="field-error">
-              @if (consulta.controls.operador_id.touched && consulta.controls.operador_id.invalid) {
-                Selecciona un operador para confirmar la salida.
-              }
-            </span>
-          </div>
-        </div>
-        <button type="submit" [disabled]="busy()">Consultar vehículo</button>
-      </fieldset>
-    </form>
-    @if (querying()) {
-      <p role="status">Consultando vehículo…</p>
-    }
-    @if (saving()) {
-      <p role="status">Registrando operación…</p>
-    }
-    @if (estado(); as state) {
-      <div class="notice" role="status">
-        <strong>{{ state.vehiculo.placa }} · {{ state.esta_dentro ? 'Dentro' : 'Fuera' }}</strong>
-        <p>{{ state.vehiculo.marca }} · {{ state.vehiculo.color }}</p>
-        @if (state.estancia; as stay) {
-          <p>Celda {{ stay.celda.codigo }} · Entrada {{ fecha(stay.entrada) }}</p>
-          <p>Confirma la salida de este vehículo con el operador seleccionado.</p>
-          <button
-            type="button"
-            class="primary"
-            (click)="registrarSalida()"
-            [disabled]="busy() || catalogLoading() || !!catalogError()"
-          >
-            Confirmar salida
-          </button>
-        } @else {
-          <p>Vehículo registrado sin estancia abierta.</p>
+    <label
+      >Operador
+      <select [(ngModel)]="operador" [disabled]="busy()">
+        @for (o of catalogos()?.operadores ?? []; track o.id) {
+          <option [ngValue]="o.id">{{ o.nombre }}</option>
         }
+      </select></label
+    >
+  </header>
+  @if (catalogos(); as cat) {
+    <div class="stats">
+      <article>
+        <strong>{{ cat.resumen.presentes }}</strong
+        ><span>Vehículos presentes</span>
+      </article>
+      <article>
+        <strong>{{ cat.resumen.libres }}</strong
+        ><span>Celdas libres</span>
+      </article>
+      <article>
+        <strong>{{ cat.resumen.autos_libres }} / {{ cat.resumen.motos_libres }}</strong
+        ><span>Libres: autos / motos</span>
+      </article>
+      <article>
+        <strong>{{ cat.resumen.inscritos }}</strong
+        ><span>Vehículos inscritos</span>
+      </article>
+    </div>
+  }
+  <nav class="tabs" aria-label="Operaciones">
+    <button
+      [class.selected]="tab() === 'entrada'"
+      (click)="cambiarTab('entrada')"
+      [disabled]="busy()"
+    >
+      Registrar entrada
+    </button>
+    <button
+      [class.selected]="tab() === 'salida'"
+      (click)="cambiarTab('salida')"
+      [disabled]="busy()"
+    >
+      Registrar salida / corregir
+    </button>
+    <button
+      [class.selected]="tab() === 'presentes'"
+      (click)="cambiarTab('presentes')"
+      [disabled]="busy()"
+    >
+      Vehículos presentes
+    </button>
+    <button
+      [class.selected]="tab() === 'historial'"
+      (click)="cambiarTab('historial')"
+      [disabled]="busy()"
+    >
+      Historial
+    </button>
+  </nav>
+  @if (error()) {
+    <p role="alert" class="notice error">{{ error() }}</p>
+  }
+  @if (mensaje()) {
+    <p role="status" class="notice success">{{ mensaje() }}</p>
+  }
+  @if (busy()) {
+    <p role="status">Procesando…</p>
+  }
+  @if (tab() === 'entrada' || tab() === 'salida') {
+    <section class="panel">
+      <h2>
+        {{
+          tab() === 'entrada'
+            ? 'Consultar vehículo para ingresar'
+            : 'Consultar estancia para salir o corregir'
+        }}
+      </h2>
+      <form (ngSubmit)="buscar()" class="search">
+        <label for="placa">Placa</label
+        ><input
+          id="placa"
+          name="placa"
+          [ngModel]="placa"
+          (ngModelChange)="cambiarPlaca($event)"
+          [disabled]="busy()"
+          placeholder="ABC123"
+          required
+          maxlength="30"
+        /><button class="primary" [disabled]="busy() || !placa.trim()">Buscar vehículo</button>
+      </form>
+      @if (estado(); as state) {
+        <div class="vehicle">
+          <h2>{{ state.placa }} · {{ state.estancia ? 'Dentro' : 'Fuera' }}</h2>
+          <p>
+            {{ state.marca }} · Modelo (año) {{ state.modelo }} · {{ state.color }} ·
+            {{ state.tipo }}
+          </p>
+          <p>
+            Cliente asociado: <strong>{{ state.cliente }}</strong>
+          </p>
+          @if (state.vigencia; as vig) {
+            <p class="notice success">
+              Mensualidad vigente: {{ fecha(vig.inicio) }} — {{ fecha(vig.vencimiento) }}
+            </p>
+          } @else {
+            <p class="notice error">
+              Sin mensualidad vigente. No se permite un nuevo ingreso; una estancia abierta sí puede
+              cerrarse.
+            </p>
+          }
+          @if (tab() === 'entrada') {
+            @if (state.estancia) {
+              <p>El vehículo ya tiene una estancia abierta.</p>
+            } @else {
+              <p>La celda se asignará automáticamente según disponibilidad y tipo de vehículo.</p>
+              <button
+                class="primary"
+                (click)="registrarEntrada()"
+                [disabled]="busy() || !state.vigencia || !operador"
+              >
+                Confirmar entrada
+              </button>
+            }
+          }
+          @if (state.estancia; as stay) {
+            <p>
+              Celda <strong>{{ stay.celda }}</strong> · Entrada {{ fecha(stay.entrada) }}
+            </p>
+            <button (click)="reimprimir(stay.id)" [disabled]="busy()">
+              Ver / reimprimir comprobante
+            </button>
+            @if (tab() === 'salida') {
+              <section class="subpanel">
+                <h3>Confirmación de salida</h3>
+                <label class="check"
+                  ><input type="checkbox" [(ngModel)]="perdido" [disabled]="busy()" /> Pérdida del
+                  comprobante</label
+                >
+                @if (!perdido) {
+                  <label for="numero">Número del comprobante presentado</label
+                  ><input
+                    id="numero"
+                    type="number"
+                    min="1"
+                    [(ngModel)]="numero"
+                    [disabled]="busy()"
+                  />
+                } @else {
+                  <p>
+                    Verifica presencialmente el nombre y documento con el cliente asociado. Si no
+                    coinciden, no autorices la salida.
+                  </p>
+                  <label for="documento">Documento presentado</label
+                  ><input id="documento" [(ngModel)]="documento" [disabled]="busy()" />
+                  <label for="motivo">Motivo de pérdida</label
+                  ><textarea id="motivo" [(ngModel)]="motivo" [disabled]="busy()"></textarea>
+                  <label class="check"
+                    ><input type="checkbox" [(ngModel)]="verificada" [disabled]="busy()" /> Confirmo
+                    que verifiqué presencialmente la identidad del cliente.</label
+                  >
+                }
+                <button
+                  class="primary"
+                  (click)="registrarSalida()"
+                  [disabled]="busy() || !operador"
+                >
+                  Confirmar salida y liberar celda
+                </button>
+              </section>
+              <details class="subpanel">
+                <summary>Corregir celda asignada</summary>
+                <p>
+                  Se conservarán la estancia y la hora de ingreso. Celda actual: {{ stay.celda }}.
+                </p>
+                <label for="nueva">Nueva celda disponible</label
+                ><select id="nueva" [(ngModel)]="nuevaCelda" [disabled]="busy()">
+                  <option [ngValue]="null">Selecciona una celda</option>
+                  @for (cell of compatibles(); track cell.id) {
+                    <option [ngValue]="cell.id">{{ cell.codigo }}</option>
+                  }
+                </select>
+                <label for="motivo-correccion">Motivo de corrección</label
+                ><textarea
+                  id="motivo-correccion"
+                  [(ngModel)]="motivoCorreccion"
+                  [disabled]="busy()"
+                ></textarea
+                ><button (click)="corregir()" [disabled]="busy() || !operador">
+                  Guardar corrección
+                </button>
+              </details>
+            }
+          } @else if (tab() === 'salida') {
+            <p>Este vehículo no tiene una estancia abierta.</p>
+          }
+        </div>
+      }
+    </section>
+  } @else {
+    <section class="panel">
+      <h2>{{ tab() === 'presentes' ? 'Vehículos presentes' : 'Historial de estancias' }}</h2>
+      <form (ngSubmit)="listar(0)" class="filters">
+        <label>Placa exacta<input name="filtro" [(ngModel)]="filtroPlaca" /></label
+        ><label>Entrada desde<input type="date" name="desde" [(ngModel)]="desde" /></label
+        ><label>Entrada hasta<input type="date" name="hasta" [(ngModel)]="hasta" /></label
+        ><button [disabled]="busy()">Filtrar / actualizar</button>
+      </form>
+      <div class="table-scroll">
+        <table>
+          <thead>
+            <tr>
+              <th>Comprobante</th>
+              <th>Placa / cliente</th>
+              <th>Celda</th>
+              <th>Entrada</th>
+              <th>Salida</th>
+              <th>Acción</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (stay of lista().items; track stay.id) {
+              <tr>
+                <td>{{ stay.id }}</td>
+                <td>
+                  <strong>{{ stay.placa }}</strong
+                  ><br />{{ stay.cliente }}
+                </td>
+                <td>{{ stay.celda }}</td>
+                <td>{{ fecha(stay.entrada) }}</td>
+                <td>{{ fecha(stay.salida) }}</td>
+                <td>
+                  <button (click)="reimprimir(stay.id)" [disabled]="busy()">Comprobante</button>
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="6">No hay estancias para esta consulta.</td>
+              </tr>
+            }
+          </tbody>
+        </table>
       </div>
-    }
-    @if (errorConsulta()) {
-      <p role="alert" class="notice error">{{ errorConsulta() }}</p>
-    }
-    @if (exitoSalida()) {
-      <p role="status" class="notice success">{{ exitoSalida() }}</p>
-    }
-    <p class="hint">Fechas mostradas en America/Bogota. La fecha y hora las asigna el servidor.</p>
-  </section>
+      <div class="pagination">
+        <span>{{ lista().total }} resultados</span
+        ><button (click)="listar(lista().offset - 20)" [disabled]="busy() || lista().offset === 0">
+          Anterior</button
+        ><button
+          (click)="listar(lista().offset + 20)"
+          [disabled]="busy() || lista().offset + 20 >= lista().total"
+        >
+          Siguiente
+        </button>
+      </div>
+    </section>
+  }
+  @if (comprobante(); as receipt) {
+    <section class="panel receipt" id="comprobante">
+      <span class="eyebrow">AUTOS COLOMBIA · COMPROBANTE DE INGRESO</span>
+      <h2>N.º {{ receipt.id }} · {{ receipt.placa }}</h2>
+      <p>Cliente: {{ receipt.cliente }}</p>
+      <p>
+        Tipo: {{ receipt.tipo }} · Celda actual: <strong>{{ receipt.celda }}</strong>
+      </p>
+      <p>Entrada: {{ fecha(receipt.entrada) }} (Colombia)</p>
+      <p>Operador de ingreso: {{ receipt.operador_entrada }}</p>
+      @if (receipt.salida) {
+        <p>Salida: {{ fecha(receipt.salida) }} · Operador: {{ receipt.operador_salida }}</p>
+      }
+      <p>
+        Conserva este comprobante para registrar la salida. Una reimpresión mantiene el mismo
+        número.
+      </p>
+      <div class="actions">
+        <button class="primary" (click)="imprimir()">Imprimir / guardar PDF</button
+        ><button (click)="comprobante.set(null)">Cerrar comprobante</button>
+      </div>
+    </section>
+  }
 </section>

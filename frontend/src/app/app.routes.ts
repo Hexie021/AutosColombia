@@ -16,7 +16,7 @@ export const routes: Routes = [
     title: 'Celdas | Autos Colombia',
     loadComponent: () => import('./celdas/celdas').then((m) => m.Celdas),
   },
-  { path: '', pathMatch: 'full', loadComponent: () => import('./home/home').then((m) => m.Home) },
+  { path: '', pathMatch: 'full', redirectTo: 'control-acceso' },
   {
     path: 'gestion/vehiculos',
     title: 'Vehículos | Autos Colombia',
