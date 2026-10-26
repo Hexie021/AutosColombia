@@ -1,8 +1,10 @@
 """Modelos iniciales. Importar este módulo no crea tablas ni abre conexiones."""
 
+from calendar import monthrange
 from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 
-from sqlalchemy import BigInteger, CheckConstraint, DateTime, ForeignKey, Identity, Index, Integer, Text, UniqueConstraint, func, text
+from sqlalchemy import Boolean, BigInteger, CheckConstraint, DateTime, ForeignKey, Identity, Index, Integer, Text, UniqueConstraint, func, text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, validates
 
 
@@ -14,6 +16,24 @@ def required_text(value: str, attribute: str) -> str:
     if not isinstance(value, str) or not value.strip():
         raise ValueError(f"{attribute} debe ser texto no vacío.")
     return value.strip()
+
+
+class Cliente(Base):
+    __tablename__ = "cliente"
+    __table_args__ = (
+        UniqueConstraint("documento", name="uq_cliente_documento"),
+        CheckConstraint("nombre ~ '[^[:space:]]'", name="ck_cliente_nombre_no_vacio"),
+        CheckConstraint("documento ~ '[^[:space:]]'", name="ck_cliente_documento_no_vacio"),
+        CheckConstraint("documento = btrim(documento)", name="ck_cliente_documento_normalizado"),
+    )
+
+    id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
+    nombre: Mapped[str] = mapped_column(Text, nullable=False)
+    documento: Mapped[str] = mapped_column(Text, nullable=False)
+
+    @validates("nombre", "documento")
+    def validate_text(self, key: str, value: str) -> str:
+        return required_text(value, key)
 
 
 class Vehiculo(Base):
@@ -29,6 +49,10 @@ class Vehiculo(Base):
     )
 
     id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
+    cliente_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("cliente.id", name="fk_vehiculo_cliente", ondelete="RESTRICT"), nullable=False
+    )
+    cliente: Mapped[Cliente] = relationship()
     placa: Mapped[str] = mapped_column(Text, nullable=False)
     color: Mapped[str] = mapped_column(Text, nullable=False)
     modelo: Mapped[int] = mapped_column(Integer, nullable=False)
@@ -58,6 +82,7 @@ class Celda(Base):
         CheckConstraint("codigo ~ '[^[:space:]]'", name="ck_celda_codigo_no_vacio"),
         CheckConstraint("codigo = upper(regexp_replace(codigo, '^[[:space:]]+|[[:space:]]+$', '', 'g'))", name="ck_celda_codigo_normalizado"),
         CheckConstraint("tipo ~ '[^[:space:]]'", name="ck_celda_tipo_no_vacio"),
+        CheckConstraint("tipo IN ('MOTO', 'AUTOMOVIL_CAMIONETA')", name="ck_celda_tipo_admitido"),
     )
 
     id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
@@ -68,6 +93,10 @@ class Celda(Base):
     def validate_text(self, key: str, value: str) -> str:
         value = required_text(value, key)
         return value.upper() if key == "codigo" else value
+
+    def es_compatible(self, tipo_vehiculo: str) -> bool:
+        return ((self.tipo == "MOTO" and tipo_vehiculo == "MOTO") or
+                (self.tipo == "AUTOMOVIL_CAMIONETA" and tipo_vehiculo in {"AUTOMOVIL", "CAMIONETA"}))
 
 
 class Operador(Base):
@@ -140,3 +169,98 @@ class Estancia(Base):
         self.salida = fecha_salida
         self.operador_salida = operador
         self.operador_salida_id = operador.id
+
+
+
+def fecha_con_zona(value: datetime) -> datetime:
+    if not isinstance(value, datetime) or value.utcoffset() is None:
+        raise ValueError("La fecha debe incluir zona horaria.")
+    return value
+
+
+def siguiente_mes(inicio: datetime) -> datetime:
+    """Un mes calendario, preservando la hora de Bogotá y ajustando el día."""
+    local = fecha_con_zona(inicio).astimezone(ZoneInfo("America/Bogota"))
+    year = local.year + (local.month == 12)
+    month = local.month % 12 + 1
+    day = min(local.day, monthrange(year, month)[1])
+    return local.replace(year=year, month=month, day=day)
+
+
+class VigenciaMensualidad(Base):
+    __tablename__ = "vigencia_mensualidad"
+    __table_args__ = (
+        CheckConstraint("vencimiento > inicio", name="ck_vigencia_orden_fechas"),
+        Index("ix_vigencia_vehiculo_fechas", "vehiculo_id", "inicio", "vencimiento"),
+    )
+    id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
+    vehiculo_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("vehiculo.id", name="fk_vigencia_vehiculo", ondelete="RESTRICT"), nullable=False
+    )
+    inicio: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    vencimiento: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    vehiculo: Mapped[Vehiculo] = relationship()
+
+    @validates("inicio", "vencimiento")
+    def validar_fecha(self, key: str, value: datetime) -> datetime:
+        return fecha_con_zona(value)
+
+    def esta_vigente(self, fecha: datetime) -> bool:
+        return self.inicio <= fecha_con_zona(fecha) < self.vencimiento
+
+
+class CorreccionCelda(Base):
+    __tablename__ = "correccion_celda"
+    __table_args__ = (
+        CheckConstraint("celda_anterior_id <> celda_nueva_id", name="ck_correccion_celdas_distintas"),
+        CheckConstraint("motivo ~ '[^[:space:]]'", name="ck_correccion_motivo_no_vacio"),
+        Index("ix_correccion_estancia_fecha", "estancia_id", "fecha"),
+    )
+    id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
+    estancia_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("estancia.id", name="fk_correccion_estancia", ondelete="RESTRICT"), nullable=False
+    )
+    celda_anterior_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("celda.id", name="fk_correccion_celda_anterior", ondelete="RESTRICT"), nullable=False
+    )
+    celda_nueva_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("celda.id", name="fk_correccion_celda_nueva", ondelete="RESTRICT"), nullable=False
+    )
+    operador_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("operador.id", name="fk_correccion_operador", ondelete="RESTRICT"), nullable=False
+    )
+    fecha: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    motivo: Mapped[str] = mapped_column(Text, nullable=False)
+    estancia: Mapped[Estancia] = relationship()
+    celda_anterior: Mapped[Celda] = relationship(foreign_keys=[celda_anterior_id])
+    celda_nueva: Mapped[Celda] = relationship(foreign_keys=[celda_nueva_id])
+    operador: Mapped[Operador] = relationship()
+
+    @validates("motivo")
+    def validar_motivo(self, key: str, value: str) -> str:
+        return required_text(value, key)
+
+
+class IncidenciaSalida(Base):
+    __tablename__ = "incidencia_salida"
+    __table_args__ = (
+        UniqueConstraint("estancia_id", name="uq_incidencia_estancia"),
+        CheckConstraint("motivo ~ '[^[:space:]]'", name="ck_incidencia_motivo_no_vacio"),
+        CheckConstraint("identidad_verificada IS TRUE", name="ck_incidencia_identidad_verificada"),
+    )
+    id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
+    estancia_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("estancia.id", name="fk_incidencia_estancia", ondelete="RESTRICT"), nullable=False
+    )
+    operador_id: Mapped[int] = mapped_column(
+        BigInteger, ForeignKey("operador.id", name="fk_incidencia_operador", ondelete="RESTRICT"), nullable=False
+    )
+    fecha: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    motivo: Mapped[str] = mapped_column(Text, nullable=False)
+    identidad_verificada: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    estancia: Mapped[Estancia] = relationship()
+    operador: Mapped[Operador] = relationship()
+
+    @validates("motivo")
+    def validar_motivo(self, key: str, value: str) -> str:
+        return required_text(value, key)

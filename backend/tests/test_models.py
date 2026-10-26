@@ -68,12 +68,17 @@ def test_migration_matches_models_without_connecting(monkeypatch):
     assert set(metadata.tables) == {"vehiculo", "celda", "operador"}
     for name, table in metadata.tables.items():
         model_table = Base.metadata.tables[name]
+        # 0001 es una revisión histórica; 0003 agrega la relación con cliente.
+        expected_columns = [c for c in model_table.columns if c.name != "cliente_id"]
         assert [(c.name, str(c.type), c.nullable) for c in table.columns] == [
-            (c.name, str(c.type), c.nullable) for c in model_table.columns
+            (c.name, str(c.type), c.nullable) for c in expected_columns
         ]
         def constraints(t):
             return {(c.name, str(c.sqltext)) for c in t.constraints if isinstance(c, sa.CheckConstraint)}
-        assert constraints(table) == constraints(model_table)
+        expected_checks = constraints(model_table) - {
+            ("ck_celda_tipo_admitido", "tipo IN ('MOTO', 'AUTOMOVIL_CAMIONETA')")
+        }
+        assert constraints(table) == expected_checks
         def unique_columns(t):
             return {tuple(c.columns.keys()) for c in t.constraints if isinstance(c, sa.UniqueConstraint)}
         assert unique_columns(table) == unique_columns(model_table)

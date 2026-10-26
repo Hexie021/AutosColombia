@@ -62,3 +62,6 @@ Desktop.ini
 .history/
 *.swp
 *.swo
+
+# Documentación académica de la entrega, fuera del alcance del repositorio
+/docs/ea1/
