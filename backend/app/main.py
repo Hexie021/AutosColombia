@@ -7,14 +7,17 @@ from app.routers.celdas import router as celdas_router
 from app.services.celda import CeldaError
 from app.routers.operadores import router as operadores_router
 from app.services.operador import OperadorError
-from app.routers.estancias import router as estancias_router
 from app.services.estancia import EstanciaError
+
+from app.routers.operacion import router as operacion_router
 
 app = FastAPI(title="Autos Colombia API")
 app.include_router(vehiculos_router)
 app.include_router(celdas_router)
 app.include_router(operadores_router)
-app.include_router(estancias_router)
+app.include_router(operacion_router)
+# Los CRUD originales quedan como apoyo; las rutas antiguas de estancia no se publican,
+# pues permitían omitir la mensualidad y la validación del comprobante.
 
 
 @app.exception_handler(VehiculoError)
