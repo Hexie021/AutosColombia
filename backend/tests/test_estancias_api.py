@@ -55,3 +55,10 @@ def test_contrato_entrada_http_y_errores_publicos(monkeypatch):
             assert result.json() == {'detail': 'El vehículo ya está dentro.'}
     finally:
         app.dependency_overrides.clear()
+
+
+@pytest.fixture(autouse=True)
+def operador_autenticado(monkeypatch):
+    from app.routers.acceso import operador_actual
+
+    monkeypatch.setitem(app.dependency_overrides, operador_actual, lambda: 1)

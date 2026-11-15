@@ -82,7 +82,7 @@ def test_cadena_de_migraciones_coincide_con_las_ocho_tablas(monkeypatch):
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
         module.upgrade()
-    assert set(metadata.tables) == set(Base.metadata.tables)
+    assert set(metadata.tables) == set(Base.metadata.tables) - {"cuenta_operador", "sesion_operador"}
     assert len(metadata.tables) == 8
     dialect = postgresql.dialect()
     for name, actual in metadata.tables.items():

@@ -5,7 +5,12 @@
     >
     <nav aria-label="Navegación principal">
       <a routerLink="/control-acceso" routerLinkActive="active">Entrada y salida de vehículos</a>
+      @if (operador(); as cuenta) {
+        <a routerLink="/mi-cuenta">{{ cuenta.nombre }} · Mi cuenta</a>
+        <button type="button" (click)="cerrarSesion()">Cerrar sesión</button>
+      }
     </nav>
+    @if (errorSalida()) { <p role="alert">{{ errorSalida() }}</p> }
   </header>
   <main><router-outlet /></main>
   <footer>

@@ -5,14 +5,9 @@
       <h1>De entrada a salida</h1>
       <p>Mensualidades por vehículo · Fechas y horas de Colombia</p>
     </div>
-    <label
-      >Operador
-      <select [(ngModel)]="operador" [disabled]="busy()">
-        @for (o of catalogos()?.operadores ?? []; track o.id) {
-          <option [ngValue]="o.id">{{ o.nombre }}</option>
-        }
-      </select></label
-    >
+    @if (catalogos()?.operadores?.[0]; as cuenta) {
+      <p>Operador: {{ cuenta.nombre }}</p>
+    }
   </header>
   @if (catalogos(); as cat) {
     <div class="stats">

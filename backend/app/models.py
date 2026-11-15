@@ -4,7 +4,7 @@ from calendar import monthrange
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import Boolean, BigInteger, CheckConstraint, DateTime, ForeignKey, Identity, Index, Integer, Text, UniqueConstraint, func, text
+from sqlalchemy import Boolean, BigInteger, CheckConstraint, DateTime, ForeignKey, Identity, Index, Integer, String, Text, UniqueConstraint, func, text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, validates
 
 
@@ -264,3 +264,19 @@ class IncidenciaSalida(Base):
     @validates("motivo")
     def validar_motivo(self, key: str, value: str) -> str:
         return required_text(value, key)
+
+
+class CuentaOperador(Base):
+    __tablename__ = "cuenta_operador"
+
+    operador_id: Mapped[int] = mapped_column(ForeignKey("operador.id", ondelete="CASCADE"), primary_key=True)
+    usuario: Mapped[str] = mapped_column(String(80), unique=True, nullable=False)
+    clave: Mapped[str] = mapped_column(String(97), nullable=False)
+
+
+class SesionOperador(Base):
+    __tablename__ = "sesion_operador"
+
+    token: Mapped[str] = mapped_column(String(64), primary_key=True)
+    operador_id: Mapped[int] = mapped_column(ForeignKey("cuenta_operador.operador_id", ondelete="CASCADE"), index=True)
+    vence: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)

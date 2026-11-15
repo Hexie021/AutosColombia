@@ -1,3 +1,4 @@
+import { provideHttpClient } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
 import { provideRouter } from '@angular/router';
 import { App } from './app';
@@ -6,7 +7,7 @@ describe('Navegación', () => {
   it('ofrece acceso a la operación EA1', async () => {
     await TestBed.configureTestingModule({
       imports: [App],
-      providers: [provideRouter([])],
+      providers: [provideRouter([]), provideHttpClient()],
     }).compileComponents();
     const fixture = TestBed.createComponent(App);
     fixture.detectChanges();

@@ -83,3 +83,10 @@ def test_crud_and_errors_in_postgres(client):
     assert client.delete(f"/vehiculos/{first_id}").status_code == 404
     assert client.delete(f"/vehiculos/{second_id}").status_code == 204
     assert client.get("/health").json() == {"status": "ok"}
+
+
+@pytest.fixture(autouse=True)
+def operador_autenticado(monkeypatch):
+    from app.routers.acceso import operador_actual
+
+    monkeypatch.setitem(app.dependency_overrides, operador_actual, lambda: 1)

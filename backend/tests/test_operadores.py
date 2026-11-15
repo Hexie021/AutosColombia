@@ -72,3 +72,10 @@ def test_database_failure_rolls_back_and_is_generic(api):
     assert result.status_code == 503
     assert "PRIVATE" not in result.text
     session.rollback.assert_called_once()
+
+
+@pytest.fixture(autouse=True)
+def operador_autenticado(monkeypatch):
+    from app.routers.acceso import operador_actual
+
+    monkeypatch.setitem(app.dependency_overrides, operador_actual, lambda: 1)

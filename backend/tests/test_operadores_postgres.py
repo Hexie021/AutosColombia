@@ -91,3 +91,10 @@ def test_operadores_structure_and_crud():
         finally:
             app.dependency_overrides.pop(get_session, None)
             transaction.rollback()
+
+
+@pytest.fixture(autouse=True)
+def operador_autenticado(monkeypatch):
+    from app.routers.acceso import operador_actual
+
+    monkeypatch.setitem(app.dependency_overrides, operador_actual, lambda: 1)

@@ -44,7 +44,7 @@ PostgreSQL debe estar disponible en `127.0.0.1`, puerto `5432`. Desde la carpeta
 Cada comando tiene una función:
 
 1. **Preparar la base local:** solicita la contraseña del usuario administrador `postgres`, crea el usuario de la aplicación y la base `autos_colombia`, y guarda la configuración de conexión.
-2. **Aplicar el modelo físico:** ejecuta las migraciones y comprueba que estén creadas las ocho tablas del proyecto con la revisión `0003`.
+2. **Aplicar el modelo físico:** ejecuta las migraciones y comprueba que estén creadas las diez tablas del proyecto con la revisión `0004`.
 3. **Cargar la demostración:** agrega los datos ficticios que vamos a utilizar para probar la aplicación.
 
 La configuración de conexión se guarda en `backend/.env`. Este archivo es privado y está excluido de Git. Al instalar el proyecto en otro equipo, cada persona utiliza su propia contraseña de PostgreSQL; no necesita la contraseña del equipo donde se desarrolló.
@@ -156,3 +156,20 @@ El repositorio contiene el código, las migraciones, las pruebas, los scripts y 
 Los módulos de catálogo del repositorio inicial se conservan como base para las siguientes iteraciones. Las antiguas rutas `/estancias/*` ya no se publican, porque permitían registrar operaciones sin todas las validaciones definidas para esta entrega.
 
 Las credenciales, el entorno virtual, `node_modules` y las compilaciones quedan excluidos de Git. Los diagramas, mockups y demás entregables académicos se presentan en el documento de la EA1.
+
+## EA2: acceso de operador
+
+Después de configurar la base y cargar los datos de demostración, desde la carpeta
+`backend` ejecuta:
+
+```powershell
+.\.venv\Scripts\python.exe -m alembic upgrade head
+.\.venv\Scripts\python.exe -m app.crear_cuenta operador
+```
+
+El comando solicita la contraseña de forma interactiva. Si el catálogo tiene
+varios operadores, agrega el identificador del operador después del usuario.
+Reinicia la API y Angular para cargar las rutas y el proxy actualizados. Abre
+la aplicación e inicia sesión. Después de cambiar la contraseña, vuelve a
+iniciar sesión con la nueva. La API utiliza la identidad autenticada para
+registrar las operaciones.

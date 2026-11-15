@@ -77,3 +77,10 @@ def test_crud_celdas(connection):
                 assert client.get('/health').json() == {'status':'ok'}
         finally:
             app.dependency_overrides.pop(get_session, None)
+
+
+@pytest.fixture(autouse=True)
+def operador_autenticado(monkeypatch):
+    from app.routers.acceso import operador_actual
+
+    monkeypatch.setitem(app.dependency_overrides, operador_actual, lambda: 1)
