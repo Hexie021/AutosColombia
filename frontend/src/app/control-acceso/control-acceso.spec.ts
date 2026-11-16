@@ -19,6 +19,7 @@ const stay = {
   salida: null,
   operador_entrada: 'Ana',
   operador_salida: null,
+  mora_pendiente: false,
 };
 const state = {
   placa: 'ABC123',
@@ -114,5 +115,21 @@ describe('Operación EA1', () => {
     http.expectOne('/operacion/comprobante/7').flush(stay);
     expect(c.comprobante()?.id).toBe(7);
     expect(c.fecha(stay.entrada)).toContain('10:00');
+  });
+
+  it('muestra la mora pendiente y el operador en el historial de salida', () => {
+    const fixture = TestBed.createComponent(ControlAcceso);
+    const componente = fixture.componentInstance;
+    http.expectOne('/operacion/catalogos').flush(cat);
+    componente.cambiarTab('historial');
+    http.expectOne((request) => request.url === '/operacion/estancias').flush({
+      items: [{ ...stay, salida: '2026-10-25T16:00:00Z', operador_salida: 'Operador de salida', mora_pendiente: true }],
+      total: 1, offset: 0, limit: 20,
+    });
+    http.expectOne('/operacion/catalogos').flush(cat);
+    fixture.detectChanges();
+    const row = (fixture.nativeElement as HTMLElement).querySelector('tbody tr');
+    expect(row?.textContent).toContain('Mora pendiente');
+    expect(row?.textContent).toContain('Operador de salida');
   });
 });

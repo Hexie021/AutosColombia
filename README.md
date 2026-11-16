@@ -1,10 +1,10 @@
-# Autos Colombia — EA1
+# Autos Colombia — EA1 y EA2
 
-Este proyecto corresponde a la primera iteración del sistema de información del parqueadero Autos Colombia. En esta entrega nos centramos en la **gestión de la entrada y salida de vehículos**, de acuerdo con el alcance de la EA1.
+En la EA1 implementamos la **gestión de entrada y salida de vehículos** del parqueadero Autos Colombia. Para la EA2 agregamos el **acceso del operador y la gestión de celdas**, y completamos el registro de salida cuando el plan pierde vigencia.
 
 Partimos del repositorio compartido por el profesor y complementamos lo necesario para esta operación. El backend está desarrollado con FastAPI y SQLAlchemy, el frontend con Angular y la base de datos con PostgreSQL. Para crear y actualizar las tablas utilizamos las migraciones de Alembic.
 
-La gestión completa de usuarios, celdas y pagos se continuará en las siguientes entregas. Por ahora contamos con los datos mínimos de clientes, vehículos, mensualidades, celdas y operadores para que el registro de entradas y salidas funcione.
+El sistema usa un único tipo de usuario, el operador. La gestión de pagos corresponde a la EA3.
 
 ## Qué necesitamos para ejecutarlo
 
@@ -22,7 +22,7 @@ Los comandos de preparación se ejecutan en PowerShell, desde la carpeta princip
 Primero descargamos el repositorio, creamos el entorno virtual de Python e instalamos las dependencias de ambos proyectos:
 
 ```powershell
-git clone https://github.com/Hexie021/AutosColombia.git
+git clone --branch ea2 https://github.com/Hexie021/AutosColombia.git
 cd AutosColombia
 py -m venv backend/.venv
 .\backend\.venv\Scripts\python.exe -m pip install -r backend/requirements.txt
@@ -44,7 +44,7 @@ PostgreSQL debe estar disponible en `127.0.0.1`, puerto `5432`. Desde la carpeta
 Cada comando tiene una función:
 
 1. **Preparar la base local:** solicita la contraseña del usuario administrador `postgres`, crea el usuario de la aplicación y la base `autos_colombia`, y guarda la configuración de conexión.
-2. **Aplicar el modelo físico:** ejecuta las migraciones y comprueba que estén creadas las diez tablas del proyecto con la revisión `0005`.
+2. **Aplicar el modelo físico:** ejecuta las migraciones y comprueba que estén creadas las diez tablas del proyecto con la revisión `0006`.
 3. **Cargar la demostración:** agrega los datos ficticios que vamos a utilizar para probar la aplicación.
 
 La configuración de conexión se guarda en `backend/.env`. Este archivo es privado y está excluido de Git. Al instalar el proyecto en otro equipo, cada persona utiliza su propia contraseña de PostgreSQL; no necesita la contraseña del equipo donde se desarrolló.
@@ -52,6 +52,16 @@ La configuración de conexión se guarda en `backend/.env`. Este archivo es priv
 Si ya existe una configuración propia, debemos revisarla antes de ejecutar el preparador. Las migraciones comprueban la estructura existente y detienen el proceso si encuentran tablas ajenas al proyecto o vehículos anteriores que aún no estén asociados a un cliente.
 
 ## Cómo iniciamos la aplicación
+
+Para entrar por primera vez, creamos una cuenta para el operador de demostración desde PowerShell:
+
+```powershell
+cd backend
+.\.venv\Scripts\python.exe -m app.crear_cuenta operador
+cd ..
+```
+
+El comando pide una contraseña de al menos 12 caracteres. Si ya hay varios operadores, agregamos el ID del operador que usaremos al final del comando. Desde **Mi cuenta** podemos cambiar la contraseña.
 
 Abrimos **dos terminales**, cada una ubicada inicialmente en la carpeta principal del repositorio.
 
@@ -107,7 +117,7 @@ Podemos ejecutar nuevamente la carga de demostración: solo agrega los registros
 
 La mensualidad corresponde a cada vehículo e inicia desde el momento de su compra. Por ejemplo, si comienza el 21 de octubre a las 10:00, vence el 21 de noviembre a las 10:00. Cuando el mes siguiente no tiene el mismo día, se utiliza su último día. El inicio está incluido en la vigencia; al llegar a la hora de vencimiento, ya no se permite un nuevo ingreso.
 
-Si la mensualidad vence mientras el vehículo está dentro, esto no impide registrar su salida.
+Si el vehículo está dentro y el plan pierde vigencia, el operador verifica el comprobante o aplica el procedimiento por pérdida. Al confirmar, la celda se libera y el historial muestra la mora pendiente con el operador y la hora de salida.
 
 También tenemos en cuenta las siguientes reglas:
 
@@ -118,7 +128,7 @@ También tenemos en cuenta las siguientes reglas:
 - El resumen diferencia los vehículos inscritos de los presentes y muestra las celdas libres por tipo.
 - La reimpresión no crea otra estancia. Las fechas y horas de operación las asigna el servidor y se muestran en la zona horaria `America/Bogota`.
 
-La selección del operador permite identificar quién realizó cada operación. En esta entrega no se implementa autenticación ni administración completa de usuarios.
+El sistema identifica al operador de cada operación mediante su sesión.
 
 ## Verificación del funcionamiento
 
@@ -139,7 +149,7 @@ cd backend
 .\.venv\Scripts\python.exe -m pytest -q
 ```
 
-Las pruebas heredadas que se habilitan con `RUN_POSTGRES_TESTS=1` corresponden a las revisiones anteriores del esquema. No debemos habilitarlas sobre la revisión `0003`; para comprobar esta revisión con PostgreSQL utilizamos `verificar_ea1.py`. Las pruebas unitarias y HTTP complementan la verificación con la base de datos.
+Para verificar la gestión de celdas con PostgreSQL, consulta las instrucciones del README del backend. Las pruebas unitarias y HTTP complementan las verificaciones con la base de datos.
 
 Para compilar y probar Angular, utilizamos otra terminal desde la carpeta principal:
 

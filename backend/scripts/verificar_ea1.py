@@ -1,4 +1,4 @@
-"""Verifica el flujo EA1 contra PostgreSQL; revierte todos sus datos al terminar."""
+"""Verifica entradas y salidas de EA1 y EA2; revierte todos sus datos al terminar."""
 from pathlib import Path
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -7,7 +7,7 @@ from uuid import uuid4
 from sqlalchemy import select, func
 from sqlalchemy.orm import Session
 from app.database import get_engine
-from app.models import Cliente, Vehiculo, Celda, Operador, VigenciaMensualidad, IncidenciaSalida, CorreccionCelda, siguiente_mes
+from app.models import Cliente, Vehiculo, Celda, Operador, Estancia, VigenciaMensualidad, IncidenciaSalida, CorreccionCelda, siguiente_mes
 from app.schemas.operacion import EntradaOperacion, SalidaOperacion, CorreccionOperacion
 from app.services.operacion import ServicioOperacion
 from app.services.estancia import EstanciaError
@@ -60,30 +60,45 @@ def main() -> int:
             assert corregida['id'] == car['id'] and corregida['entrada'] == car['entrada']
             reimpresa = servicio.comprobante(car['id'])
             assert reimpresa['celda_id'] == nueva_celda
-            rechaza(lambda: servicio.registrar_salida(SalidaOperacion(placa=placas[0], operador_id=operador_id, comprobante_id=car['id']+999999)), 'comprobante')
             with s.begin():
                 vigencia = s.scalar(select(VigenciaMensualidad).where(VigenciaMensualidad.vehiculo_id == activos[0].id))
-                vigencia.inicio = ahora - timedelta(days=60)
-                vigencia.vencimiento = ahora - timedelta(days=1)
+                vigencia.inicio = ahora - timedelta(days=35)
+                vigencia.vencimiento = siguiente_mes(vigencia.inicio)
+                # Reconstruye una estancia antigua en la que el plan estaba vigente al entrar.
+                s.get(Estancia, car['id']).entrada = vigencia.vencimiento - timedelta(days=1)
+            rechaza(lambda: servicio.registrar_salida(SalidaOperacion(placa=placas[0], operador_id=operador_id, comprobante_id=car['id']+999999)), 'comprobante')
+            abierta = servicio.comprobante(car['id'])
+            assert abierta['salida'] is None and not abierta['mora_pendiente']
+            assert next(c for c in servicio.catalogos()['celdas'] if c['id'] == nueva_celda)['ocupada']
             salida = servicio.registrar_salida(SalidaOperacion(placa=placas[0], operador_id=operador_id, comprobante_id=car['id']))
-            assert salida['salida'] is not None
+            assert salida['salida'] is not None and salida['mora_pendiente']
+            assert salida['operador_salida'] == token
+            assert not next(c for c in servicio.catalogos()['celdas'] if c['id'] == nueva_celda)['ocupada']
             moto = servicio.registrar_entrada(EntradaOperacion(placa=placas[1], operador_id=operador_id))
             rechaza(lambda: servicio.registrar_salida(SalidaOperacion(placa=placas[1], operador_id=operador_id, perdido=True, documento='NO-COINCIDE', motivo='Pérdida', identidad_verificada=True)), 'documento')
-            servicio.registrar_salida(SalidaOperacion(placa=placas[1], operador_id=operador_id, perdido=True, documento=token, motivo='Pérdida verificada', identidad_verificada=True))
+            habitual = servicio.registrar_salida(SalidaOperacion(placa=placas[1], operador_id=operador_id, perdido=True, documento=token, motivo='Pérdida verificada', identidad_verificada=True))
+            assert habitual['salida'] is not None and not habitual['mora_pendiente']
+            assert not next(c for c in servicio.catalogos()['celdas'] if c['id'] == habitual['celda_id'])['ocupada']
+            assert not servicio.listado(False, placas[1], None, None, 0, 20)['items'][0]['mora_pendiente']
             assert servicio.listado(True, placas[0], None, None, 0, 20)['total'] == 0
-            assert servicio.listado(False, placas[0], None, None, 0, 20)['total'] == 1
+            historial = servicio.listado(False, placas[0], None, None, 0, 20)
+            assert historial['total'] == 1
+            assert historial['items'][0]['mora_pendiente']
+            assert historial['items'][0]['operador_salida'] == token
+            assert historial['items'][0]['salida'] == salida['salida']
             with s.begin():
                 assert s.scalar(select(func.count()).select_from(IncidenciaSalida).where(IncidenciaSalida.estancia_id == moto['id'])) == 1
                 assert s.scalar(select(func.count()).select_from(CorreccionCelda).where(CorreccionCelda.estancia_id == car['id'])) == 1
         print('CORRECTO: entrada automática, duplicado, mensualidad vencida, corrección y reimpresión.')
         print('CORRECTO: comprobante incorrecto, salida con vigencia vencida, pérdida e identidad incorrecta.')
         print('CORRECTO: presentes, historial y registros de incidencia/corrección.')
+        print('CORRECTO (EA2): mora registrada en el historial con la hora y el operador, celda liberada y salida habitual sin mora.')
         return 0
     except Exception as error:
         if isinstance(error, (AssertionError, EstanciaError)):
-            print('La verificación detectó una diferencia en una regla del flujo EA1.')
+            print('La verificación detectó una diferencia en una regla de entrada o salida.')
         else:
-            print('No se completó la verificación. Revisa conexión, permisos y migración 0003.')
+            print('No se completó la verificación. Revisa conexión, permisos y migración 0006.')
         return 1
     finally:
         if exterior is not None:

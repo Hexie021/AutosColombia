@@ -95,7 +95,10 @@ def test_migracion_coincide_con_modelo_y_compila_sql(monkeypatch):
         return sorted(line.strip().rstrip(",") for line in
                       str(CreateTable(table).compile(dialect=dialect)).splitlines())
 
-    assert ddl_parts(actual) == ddl_parts(expected)
+    # La revisión 0006 agregó la columna de mora y su restricción de cierre.
+    assert ddl_parts(actual) == [
+        line for line in ddl_parts(expected) if "mora_pendiente" not in line
+    ]
     assert {str(CreateIndex(i).compile(dialect=dialect)) for i in actual.indexes} == {
         str(CreateIndex(i).compile(dialect=dialect)) for i in expected.indexes
     }

@@ -1,7 +1,9 @@
-# Modelo físico de la primera iteración
+# Modelo físico de Autos Colombia
 
 La revisión 0003 completa las ocho tablas del modelo relacional. Las revisiones
 0001 y 0002 conservan la base del profe, no se reescriben ni se borran sus tablas.
+En la EA2, la revisión 0004 agrega las cuentas y sesiones del operador, la 0005
+incorpora la habilitación de celdas y la 0006 registra la mora pendiente en la estancia.
 
 ## Aplicar al destino local preparado
 
@@ -13,7 +15,7 @@ Desde la raíz del repositorio, después de preparar la base y verificar la cone
 
 El comando modifica el esquema de la base local autos_colombia. Usa el usuario de
 aplicación y la configuración privada existente. Verifica el destino, aplica las
-migraciones y comprueba las ocho tablas y la revisión 0003. No elimina datos ni
+migraciones y comprueba las diez tablas del proyecto y la revisión 0006. No elimina datos ni
 recrea estructuras existentes. Si detecta vehículos sin asociación de cliente o
 celdas con tipos anteriores sin clasificar, se detiene para planificar su adaptación.
 

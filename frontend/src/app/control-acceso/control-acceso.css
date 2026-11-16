@@ -232,3 +232,13 @@ th {
     display: none;
   }
 }
+.warning,
+.mora-badge {
+  background: #fff5d6;
+  color: #75410b;
+}
+.mora-badge {
+  display: inline-block;
+  padding: 4px 8px;
+  border-radius: 6px;
+}

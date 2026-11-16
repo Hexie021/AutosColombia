@@ -120,6 +120,7 @@ class Estancia(Base):
     __tablename__ = "estancia"
     __table_args__ = (
         CheckConstraint("salida >= entrada", name="ck_estancia_orden_fechas"),
+        CheckConstraint("NOT mora_pendiente OR salida IS NOT NULL", name="ck_estancia_mora_con_salida"),
         CheckConstraint(
             "(salida IS NULL) = (operador_salida_id IS NULL)",
             name="ck_estancia_cierre_completo",
@@ -140,6 +141,7 @@ class Estancia(Base):
     )
     entrada: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     salida: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    mora_pendiente: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
     operador_entrada_id: Mapped[int] = mapped_column(
         BigInteger, ForeignKey("operador.id", name="fk_estancia_operador_entrada", ondelete="RESTRICT"), nullable=False
     )

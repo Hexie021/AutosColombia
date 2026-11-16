@@ -89,11 +89,13 @@ def test_cadena_de_migraciones_coincide_con_las_ocho_tablas(monkeypatch):
         expected = Base.metadata.tables[name]
         assert {c.name: (str(c.type), c.nullable) for c in actual.columns} == {
             c.name: (str(c.type), c.nullable) for c in expected.columns
-            if (name, c.name) != ("celda", "habilitada")}
+            if (name, c.name) not in {("celda", "habilitada"), ("estancia", "mora_pendiente")}}
         assert actual.c.id.identity.always and expected.c.id.identity.always
         def checks(t):
             return {(c.name, str(c.sqltext)) for c in t.constraints if isinstance(c, sa.CheckConstraint)}
-        assert checks(actual) == checks(expected), name
+        assert checks(actual) == {
+            check for check in checks(expected) if check[0] != "ck_estancia_mora_con_salida"
+        }, name
         def fks(t):
             return {(f.parent.name, f.target_fullname, f.ondelete) for f in t.foreign_keys}
         assert fks(actual) == fks(expected), name

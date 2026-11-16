@@ -1,4 +1,4 @@
-"""Operación transaccional EA1 sobre los modelos del profesor."""
+"""Operación transaccional de entradas, salidas e historial."""
 from datetime import date, datetime, time, timedelta, timezone
 from zoneinfo import ZoneInfo
 from sqlalchemy import func, select
@@ -30,7 +30,8 @@ class ServicioOperacion(ServicioEstancia):
                 "cliente": vehiculo.cliente.nombre, "celda": celda.codigo,
                 "celda_id": celda.id, "entrada": estancia.entrada, "salida": estancia.salida,
                 "operador_entrada": estancia.operador_entrada.nombre,
-                "operador_salida": estancia.operador_salida.nombre if estancia.operador_salida else None}
+                "operador_salida": estancia.operador_salida.nombre if estancia.operador_salida else None,
+                "mora_pendiente": estancia.mora_pendiente}
 
     @transaccion
     def consultar_operacion(self, placa: str) -> dict:
@@ -86,15 +87,16 @@ class ServicioOperacion(ServicioEstancia):
         estancia = self._abierta(vehiculo.id, bloquear=True)
         if estancia is None:
             raise EstanciaError(409, "El vehículo no tiene una estancia abierta.")
+        ahora = datetime.now(timezone.utc)
         if data.perdido:
             if data.documento.strip() != vehiculo.cliente.documento:
                 raise EstanciaError(409, "El documento no coincide con el cliente asociado. No se autoriza la salida.")
             self.session.add(IncidenciaSalida(estancia_id=estancia.id, operador_id=operador.id,
-                fecha=datetime.now(timezone.utc), motivo=data.motivo.strip(), identidad_verificada=True))
+                fecha=ahora, motivo=data.motivo.strip(), identidad_verificada=True))
         elif data.comprobante_id != estancia.id:
             raise EstanciaError(409, "El comprobante no corresponde a la estancia abierta de esta placa.")
-        # Una mensualidad vencida durante la estancia no bloquea la salida.
-        estancia.cerrar(datetime.now(timezone.utc), operador)
+        estancia.cerrar(ahora, operador)
+        estancia.mora_pendiente = self._vigencia(vehiculo.id, ahora) is None
         self.session.flush()
         return self._detalle(estancia)
 

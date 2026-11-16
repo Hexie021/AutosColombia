@@ -3,7 +3,7 @@ from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock, patch
 import pytest
 from pydantic import ValidationError
-from app.models import Cliente, Vehiculo, Operador, Estancia, Celda
+from app.models import Cliente, Vehiculo, Operador, Estancia, Celda, VigenciaMensualidad
 from app.schemas.operacion import EntradaOperacion, SalidaOperacion, CorreccionOperacion
 from app.services.estancia import EstanciaError
 from app.services.operacion import ServicioOperacion, tipo_celda
@@ -40,10 +40,43 @@ def test_documento_o_comprobante_incorrecto_no_cierra(perdido):
     estancia=Estancia(id=3,vehiculo_id=1,celda_id=1,entrada=datetime.now(timezone.utc)-timedelta(hours=1),salida=None)
     service=ServicioOperacion(session)
     payload=SalidaOperacion(placa='ABC123',operador_id=1,comprobante_id=999,perdido=perdido,documento='OTRO',motivo='Pérdida',identidad_verificada=True)
-    with patch.object(service,'_vehiculo',return_value=vehicle), patch.object(service,'_operador'), patch.object(service,'_abierta',return_value=estancia):
+    with patch.object(service,'_vehiculo',return_value=vehicle), patch.object(service,'_operador'), patch.object(service,'_abierta',return_value=estancia), patch.object(service, '_vigencia', return_value=None) as vigencia:
         with pytest.raises(EstanciaError): service.registrar_salida(payload)
+        vigencia.assert_not_called()
     assert estancia.salida is None
     session.add.assert_not_called()
+
+
+@pytest.mark.parametrize("plan_vigente", [True, False])
+def test_salida_guarda_la_mora_segun_la_vigencia_al_cierre(plan_vigente):
+    session = MagicMock()
+    ahora = datetime.now(timezone.utc)
+    operador = Operador(id=1, nombre="Operador de prueba", telefono="000")
+    vehiculo = Vehiculo(id=2, placa="ABC123", tipo="AUTOMOVIL")
+    vehiculo.cliente = Cliente(nombre="Cliente de prueba", documento="DEMO-001")
+    celda = Celda(id=3, codigo="A01", tipo="AUTOMOVIL_CAMIONETA")
+    estancia = Estancia(
+        id=4, vehiculo_id=vehiculo.id, celda_id=celda.id, entrada=ahora - timedelta(hours=1),
+        operador_entrada=operador,
+    )
+    session.get.side_effect = [vehiculo, celda]
+    service = ServicioOperacion(session)
+    vigencia = VigenciaMensualidad(inicio=ahora - timedelta(days=2), vencimiento=ahora + timedelta(days=20))
+    with (
+        patch.object(service, "_vehiculo", return_value=vehiculo),
+        patch.object(service, "_operador", return_value=operador),
+        patch.object(service, "_abierta", return_value=estancia) as abierta,
+        patch.object(service, "_vigencia", return_value=vigencia if plan_vigente else None) as consultar,
+    ):
+        respuesta = service.registrar_salida(SalidaOperacion(placa="ABC123", operador_id=1, comprobante_id=4))
+
+    abierta.assert_called_once_with(vehiculo.id, bloquear=True)
+    consultar.assert_called_once_with(vehiculo.id, estancia.salida)
+    assert respuesta["mora_pendiente"] is not plan_vigente
+    assert respuesta["operador_salida"] == operador.nombre
+    assert respuesta["salida"] == estancia.salida
+    assert estancia.operador_salida_id == operador.id
+    session.flush.assert_called_once()
 
 @pytest.mark.parametrize(("tipo", "habilitada", "mensaje"), [
     ("MOTO", True, "compatible"),

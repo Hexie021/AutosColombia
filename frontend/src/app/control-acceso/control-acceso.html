@@ -104,10 +104,14 @@
             <p class="notice success">
               Mensualidad vigente: {{ fecha(vig.inicio) }} — {{ fecha(vig.vencimiento) }}
             </p>
+          } @else if (tab() === 'salida' && state.estancia) {
+            <p class="notice warning">
+              El vehículo tiene una estancia abierta y el plan perdió vigencia. Puedes registrar
+              la salida con la verificación habitual. El sistema dejará la mora pendiente.
+            </p>
           } @else {
             <p class="notice error">
-              Sin mensualidad vigente. No se permite un nuevo ingreso; una estancia abierta sí puede
-              cerrarse.
+              Sin mensualidad vigente. No se permite un nuevo ingreso.
             </p>
           }
           @if (tab() === 'entrada') {
@@ -216,6 +220,9 @@
               <th>Celda</th>
               <th>Entrada</th>
               <th>Salida</th>
+              @if (tab() === 'historial') {
+                <th>Novedad de salida</th>
+              }
               <th>Acción</th>
             </tr>
           </thead>
@@ -230,13 +237,23 @@
                 <td>{{ stay.celda }}</td>
                 <td>{{ fecha(stay.entrada) }}</td>
                 <td>{{ fecha(stay.salida) }}</td>
+                @if (tab() === 'historial') {
+                  <td>
+                    @if (stay.mora_pendiente) {
+                      <strong class="mora-badge">Mora pendiente</strong>
+                      <div>{{ stay.operador_salida }}</div>
+                    } @else {
+                      —
+                    }
+                  </td>
+                }
                 <td>
                   <button (click)="reimprimir(stay.id)" [disabled]="busy()">Comprobante</button>
                 </td>
               </tr>
             } @empty {
               <tr>
-                <td colspan="6">No hay estancias para esta consulta.</td>
+                <td [attr.colspan]="tab() === 'historial' ? 7 : 6">No hay estancias para esta consulta.</td>
               </tr>
             }
           </tbody>
@@ -267,6 +284,11 @@
       <p>Operador de ingreso: {{ receipt.operador_entrada }}</p>
       @if (receipt.salida) {
         <p>Salida: {{ fecha(receipt.salida) }} · Operador: {{ receipt.operador_salida }}</p>
+        @if (receipt.mora_pendiente) {
+          <p class="notice warning" role="status">
+            <strong>Mora pendiente.</strong> La salida quedó registrada con el plan vencido.
+          </p>
+        }
       }
       <p>
         Conserva este comprobante para registrar la salida. Una reimpresión mantiene el mismo
