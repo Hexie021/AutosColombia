@@ -3,7 +3,7 @@ import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, ValidatorFn } from '@angular/forms';
 import { CeldasService } from '../services/celdas.service';
-import { Celda, CeldaCrear } from '../models/celda';
+import { Celda, CeldaCrear, FiltrosCeldas } from '../models/celda';
 import { ErrorApi } from '../models/vehiculo';
 
 const nonBlank: ValidatorFn = (control) =>
@@ -24,10 +24,25 @@ export class Celdas {
     { key: 'codigo' as const, label: 'Código' },
     { key: 'tipo' as const, label: 'Tipo' },
   ];
+  readonly types = [
+    { value: 'AUTOMOVIL_CAMIONETA', label: 'Automóvil y camioneta' },
+    { value: 'MOTO', label: 'Moto' },
+  ];
+
+  typeLabel(value: string): string {
+    return this.types.find((type) => type.value === value)?.label ?? value;
+  }
   readonly form = this.fb.group({
     codigo: this.fb.nonNullable.control('', nonBlank),
     tipo: this.fb.nonNullable.control('', nonBlank),
   });
+  readonly filtersForm = this.fb.nonNullable.group({
+    codigo: '',
+    tipo: '',
+    habilitada: '',
+    ocupada: '',
+  });
+  private filters: FiltrosCeldas = this.filtersForm.getRawValue();
   readonly items = signal<Celda[]>([]);
   readonly total = signal(0);
   readonly offset = signal(0);
@@ -37,7 +52,7 @@ export class Celdas {
   readonly busy = computed(() => this.loading() || this.saving());
   readonly showForm = signal(false);
   readonly editing = signal<number | null>(null);
-  readonly pendingDelete = signal<Celda | null>(null);
+  readonly pendingChange = signal<Celda | null>(null);
   readonly listError = signal('');
   readonly actionError = signal('');
   readonly success = signal('');
@@ -48,12 +63,19 @@ export class Celdas {
     this.load();
   }
 
+  applyFilters(): void {
+    if (this.busy()) return;
+    const values = this.filtersForm.getRawValue();
+    this.filters = { ...values, codigo: values.codigo.trim() };
+    this.load(0);
+  }
+
   load(offset = this.offset()): void {
     if (this.busy()) return;
     this.loading.set(true);
     this.listError.set('');
     this.api
-      .list(offset, this.limit)
+      .list(offset, this.limit, this.filters)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
         next: (data) => {
@@ -78,17 +100,17 @@ export class Celdas {
     this.form.reset();
     this.editing.set(null);
     this.showForm.set(true);
-    this.pendingDelete.set(null);
+    this.pendingChange.set(null);
     this.actionError.set('');
     this.success.set('');
   }
 
   edit(cell: Celda): void {
-    if (this.busy()) return;
+    if (this.busy() || cell.tiene_historial) return;
     this.loading.set(true);
     this.actionError.set('');
     this.success.set('');
-    this.pendingDelete.set(null);
+    this.pendingChange.set(null);
     this.api
       .get(cell.id)
       .pipe(takeUntilDestroyed(this.destroyRef))
@@ -109,7 +131,7 @@ export class Celdas {
   cancel(): void {
     if (this.busy()) return;
     this.showForm.set(false);
-    this.pendingDelete.set(null);
+    this.pendingChange.set(null);
     this.actionError.set('');
   }
 
@@ -151,7 +173,7 @@ export class Celdas {
       error: (error: HttpErrorResponse) => {
         this.saving.set(false);
         this.actionError.set(this.errorMessage(error));
-        if (error.status === 409)
+        if (error.status === 409 && error.error?.detail === 'Ya existe una celda con ese código.')
           this.setFieldError('codigo', 'Ya existe una celda con ese código.');
         const body = error.error as ErrorApi | null;
         if (error.status === 422 && Array.isArray(body?.detail)) {
@@ -174,46 +196,46 @@ export class Celdas {
     this.form.controls[field].markAsTouched();
   }
 
-  confirmDelete(cell: Celda): void {
-    if (this.busy()) return;
-    this.pendingDelete.set(cell);
+  confirmChange(cell: Celda): void {
+    if (this.busy() || (cell.habilitada && cell.ocupada)) return;
+    this.pendingChange.set(cell);
     this.showForm.set(false);
     this.actionError.set('');
     this.success.set('');
   }
 
-  remove(): void {
-    const cell = this.pendingDelete();
+  changeEnabled(): void {
+    const cell = this.pendingChange();
     if (!cell || this.busy()) return;
     this.saving.set(true);
     this.actionError.set('');
     this.api
-      .delete(cell.id)
+      .setEnabled(cell.id, !cell.habilitada)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: () => {
+        next: (updated) => {
           this.saving.set(false);
-          this.pendingDelete.set(null);
-          this.success.set(`Celda ${cell.codigo} eliminada correctamente.`);
+          this.pendingChange.set(null);
+          this.success.set(`Celda ${cell.codigo} ${updated.habilitada ? 'habilitada' : 'deshabilitada'}.`);
           this.load();
         },
         error: (error) => {
           this.saving.set(false);
-          this.actionError.set(this.errorMessage(error, true));
-          if (error.status === 404) {
-            this.pendingDelete.set(null);
+          this.actionError.set(this.errorMessage(error));
+          if (error.status === 404 || error.status === 409) {
+            this.pendingChange.set(null);
             this.load();
           }
         },
       });
   }
 
-  private errorMessage(error: HttpErrorResponse, deleting = false): string {
+  private errorMessage(error: HttpErrorResponse): string {
     if (error.status === 404) return 'La celda ya no existe. Actualiza el listado.';
-    if (error.status === 409)
-      return deleting
-        ? 'No se puede eliminar: la celda tiene registros relacionados o un conflicto con otros datos.'
-        : 'Ya existe una celda con ese código.';
+    if (error.status === 409) {
+      const detail = (error.error as ErrorApi | null)?.detail;
+      return typeof detail === 'string' ? detail : 'La operación entra en conflicto con el estado actual de la celda.';
+    }
     if (error.status === 422)
       return 'Revisa los datos: hay campos que no cumplen las validaciones.';
     return 'No se pudo conectar con el servicio. Comprueba la conexión y actualiza el listado antes de reintentar.';

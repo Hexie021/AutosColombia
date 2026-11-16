@@ -45,15 +45,19 @@ def test_documento_o_comprobante_incorrecto_no_cierra(perdido):
     assert estancia.salida is None
     session.add.assert_not_called()
 
-def test_correccion_incompatible_no_modifica_la_estancia():
+@pytest.mark.parametrize(("tipo", "habilitada", "mensaje"), [
+    ("MOTO", True, "compatible"),
+    ("AUTOMOVIL_CAMIONETA", False, "deshabilitada"),
+])
+def test_correccion_con_destino_no_disponible_no_modifica_la_estancia(tipo, habilitada, mensaje):
     session=MagicMock()
     vehicle=Vehiculo(id=1,cliente_id=1,placa='ABC123',color='Gris',modelo=2022,marca='Demo',tipo='AUTOMOVIL')
     estancia=Estancia(id=3,vehiculo_id=1,celda_id=1,salida=None)
     estancia.vehiculo=vehicle
-    session.scalar.side_effect=[estancia, Celda(id=2,codigo='M01',tipo='MOTO')]
+    session.scalar.side_effect = [estancia, Celda(id=2, codigo="C02", tipo=tipo, habilitada=habilitada)]
     service=ServicioOperacion(session)
     with patch.object(service,'_operador'):
-        with pytest.raises(EstanciaError,match='compatible'):
+        with pytest.raises(EstanciaError, match=mensaje):
             service.corregir(CorreccionOperacion(estancia_id=3,celda_id=2,operador_id=1,motivo='Cambio'))
     assert estancia.celda_id==1
     session.add.assert_not_called()

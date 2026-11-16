@@ -88,7 +88,8 @@ def test_cadena_de_migraciones_coincide_con_las_ocho_tablas(monkeypatch):
     for name, actual in metadata.tables.items():
         expected = Base.metadata.tables[name]
         assert {c.name: (str(c.type), c.nullable) for c in actual.columns} == {
-            c.name: (str(c.type), c.nullable) for c in expected.columns}
+            c.name: (str(c.type), c.nullable) for c in expected.columns
+            if (name, c.name) != ("celda", "habilitada")}
         assert actual.c.id.identity.always and expected.c.id.identity.always
         def checks(t):
             return {(c.name, str(c.sqltext)) for c in t.constraints if isinstance(c, sa.CheckConstraint)}

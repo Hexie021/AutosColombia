@@ -44,7 +44,7 @@ PostgreSQL debe estar disponible en `127.0.0.1`, puerto `5432`. Desde la carpeta
 Cada comando tiene una función:
 
 1. **Preparar la base local:** solicita la contraseña del usuario administrador `postgres`, crea el usuario de la aplicación y la base `autos_colombia`, y guarda la configuración de conexión.
-2. **Aplicar el modelo físico:** ejecuta las migraciones y comprueba que estén creadas las diez tablas del proyecto con la revisión `0004`.
+2. **Aplicar el modelo físico:** ejecuta las migraciones y comprueba que estén creadas las diez tablas del proyecto con la revisión `0005`.
 3. **Cargar la demostración:** agrega los datos ficticios que vamos a utilizar para probar la aplicación.
 
 La configuración de conexión se guarda en `backend/.env`. Este archivo es privado y está excluido de Git. Al instalar el proyecto en otro equipo, cada persona utiliza su propia contraseña de PostgreSQL; no necesita la contraseña del equipo donde se desarrolló.

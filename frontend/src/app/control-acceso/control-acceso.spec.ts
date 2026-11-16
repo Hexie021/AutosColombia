@@ -5,7 +5,7 @@ import { ControlAcceso } from './control-acceso';
 
 const cat = {
   operadores: [{ id: 1, nombre: 'Ana' }],
-  celdas: [{ id: 1, codigo: 'A01', tipo: 'AUTOMOVIL_CAMIONETA', ocupada: false }],
+  celdas: [{ id: 1, codigo: 'A01', tipo: 'AUTOMOVIL_CAMIONETA', ocupada: false, habilitada: true }],
   resumen: { presentes: 0, libres: 80, inscritos: 4, motos_libres: 10, autos_libres: 70 },
 };
 const stay = {

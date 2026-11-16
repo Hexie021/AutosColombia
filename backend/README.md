@@ -9,4 +9,12 @@ FastAPI, SQLAlchemy y PostgreSQL. Consultar el **README.md de la raíz** para in
 - Demostración: `scripts/cargar_demo.py`.
 - Verificación de integración: `scripts/verificar_ea1.py`, que revierte sus datos temporales.
 
-Las pruebas PostgreSQL heredadas con `RUN_POSTGRES_TESTS=1` fueron escritas para los esquemas 0001 y 0002. No ejecutarlas sobre 0003; usar el verificador EA1 para esta revisión.
+Para verificar la gestión de celdas en PostgreSQL, aplica primero la migración `0005`. Desde la carpeta del backend, ejecuta:
+
+```powershell
+$env:RUN_POSTGRES_TESTS = '1'
+.\.venv\Scripts\python.exe -m pytest -q tests/test_celdas_postgres.py
+Remove-Item Env:RUN_POSTGRES_TESTS
+```
+
+Estas pruebas revierten los datos que crean. Las otras pruebas PostgreSQL heredadas corresponden a las revisiones iniciales del esquema.

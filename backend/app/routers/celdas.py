@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, Path, Query, Response
 from sqlalchemy.orm import Session
 
 from app.database import get_session
-from app.schemas.celda import CeldaActualizar, CeldaCrear, CeldaRespuesta, CeldasPagina
+from app.schemas.celda import CeldaActualizar, CeldaCrear, CeldaHabilitacion, CeldaRespuesta, CeldasPagina, TipoCelda
 from app.services import celda as service
 
 router = APIRouter(prefix="/celdas", tags=["Celdas"])
@@ -22,8 +22,12 @@ def list_all(
     session: DatabaseSession,
     offset: Annotated[int, Query(ge=0, le=9223372036854775807)] = 0,
     limit: Annotated[int, Query(ge=1, le=100)] = 20,
+    codigo: Annotated[str | None, Query(max_length=120)] = None,
+    tipo: TipoCelda | None = None,
+    habilitada: bool | None = None,
+    ocupada: bool | None = None,
 ):
-    return service.list_cells(session, offset, limit)
+    return service.list_cells(session, offset, limit, codigo, tipo, habilitada, ocupada)
 
 
 @router.get("/{id}", response_model=CeldaRespuesta)
@@ -36,7 +40,12 @@ def update(id: CellId, data: CeldaActualizar, session: DatabaseSession):
     return service.update_cell(session, id, data)
 
 
-@router.delete("/{id}", status_code=204)
+@router.patch("/{id}/habilitacion", response_model=CeldaRespuesta)
+def set_enabled(id: CellId, data: CeldaHabilitacion, session: DatabaseSession):
+    return service.set_cell_enabled(session, id, data.habilitada)
+
+
+@router.delete("/{id}", status_code=204, deprecated=True)
 def delete(id: CellId, session: DatabaseSession) -> Response:
     service.delete_cell(session, id)
     return Response(status_code=204)

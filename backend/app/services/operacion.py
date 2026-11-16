@@ -59,7 +59,7 @@ class ServicioOperacion(ServicioEstancia):
         intentadas: list[int] = []
         while True:
             celda = self.session.scalar(select(Celda).where(
-                Celda.tipo == tipo_celda(vehiculo.tipo), ~ocupada,
+                Celda.tipo == tipo_celda(vehiculo.tipo), Celda.habilitada.is_(True), ~ocupada,
                 Celda.id.not_in(intentadas),
             ).order_by(Celda.codigo).with_for_update(skip_locked=True).limit(1))
             if celda is None:
@@ -109,6 +109,8 @@ class ServicioOperacion(ServicioEstancia):
         celda = self.session.scalar(select(Celda).where(Celda.id == data.celda_id).with_for_update())
         if celda is None:
             raise EstanciaError(404, "Celda no encontrada.")
+        if celda.habilitada is False:
+            raise EstanciaError(409, "La celda está deshabilitada.")
         if not celda.es_compatible(estancia.vehiculo.tipo):
             raise EstanciaError(409, "La celda no es compatible con el vehículo.")
         if self.session.scalar(select(Estancia.id).where(Estancia.celda_id == celda.id, Estancia.salida.is_(None))):
@@ -131,13 +133,15 @@ class ServicioOperacion(ServicioEstancia):
         # Una misma instantánea para celdas y ocupación; evita contadores parciales.
         rows = self.session.execute(select(Celda, Estancia.id).outerjoin(Estancia,
             (Estancia.celda_id == Celda.id) & Estancia.salida.is_(None)).order_by(Celda.codigo)).all()
-        celdas = [{"id": c.id, "codigo": c.codigo, "tipo": c.tipo, "ocupada": e is not None} for c, e in rows]
+        celdas = [{"id": c.id, "codigo": c.codigo, "tipo": c.tipo,
+                   "ocupada": e is not None, "habilitada": c.habilitada} for c, e in rows]
         presentes = sum(c["ocupada"] for c in celdas)
+        libres = [c for c in celdas if c["habilitada"] and not c["ocupada"]]
         return {"operadores": [{"id": o.id, "nombre": o.nombre} for o in self.session.scalars(select(Operador).order_by(Operador.id))],
-                "celdas": celdas, "resumen": {"presentes": presentes, "libres": len(celdas) - presentes,
+                "celdas": celdas, "resumen": {"presentes": presentes, "libres": len(libres),
                     "inscritos": self.session.scalar(select(func.count()).select_from(Vehiculo)),
-                    "motos_libres": sum(c["tipo"] == "MOTO" and not c["ocupada"] for c in celdas),
-                    "autos_libres": sum(c["tipo"] == "AUTOMOVIL_CAMIONETA" and not c["ocupada"] for c in celdas)}}
+                    "motos_libres": sum(c["tipo"] == "MOTO" for c in libres),
+                    "autos_libres": sum(c["tipo"] == "AUTOMOVIL_CAMIONETA" for c in libres)}}
 
     @transaccion
     def listado(self, presentes: bool, placa: str, desde: date | None, hasta: date | None, offset: int, limit: int) -> dict:

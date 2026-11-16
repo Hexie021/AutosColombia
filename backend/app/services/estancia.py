@@ -66,9 +66,11 @@ class ServicioEstancia:
     @transaccion
     def entrada(self, data: EntradaCrear) -> EstanciaRespuesta:
         vehiculo = self._vehiculo(data.placa)
-        celda = self.session.get(Celda, data.celda_id)
+        celda = self.session.get(Celda, data.celda_id, with_for_update=True)
         if celda is None:
             raise EstanciaError(404, "Celda no encontrada.")
+        if celda.habilitada is False:
+            raise EstanciaError(409, "La celda está deshabilitada.")
         operador = self._operador(data.operador_id)
         if self.session.scalar(select(Estancia.id).where(
             Estancia.vehiculo_id == vehiculo.id, Estancia.salida.is_(None)
@@ -116,7 +118,9 @@ class ServicioEstancia:
         if estancia is not None:
             abierta = EstanciaAbiertaRespuesta(
                 **EstanciaRespuesta.model_validate(estancia).model_dump(),
-                celda=CeldaRespuesta.model_validate(celda),
+                celda=CeldaRespuesta.model_validate(celda).model_copy(
+                    update={"ocupada": True, "tiene_historial": True}
+                ),
             )
         return EstadoVehiculoRespuesta(vehiculo=VehiculoRespuesta.model_validate(vehiculo),
                                        esta_dentro=estancia is not None, estancia=abierta)

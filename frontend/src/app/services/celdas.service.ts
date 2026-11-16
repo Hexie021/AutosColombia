@@ -1,7 +1,7 @@
 import { HttpClient } from '@angular/common/http';
 import { inject, Injectable } from '@angular/core';
 import { timeout } from 'rxjs';
-import { Celda, CeldaActualizar, CeldaCrear, CeldasPagina } from '../models/celda';
+import { Celda, CeldaActualizar, CeldaCrear, CeldasPagina, FiltrosCeldas } from '../models/celda';
 
 import { API_BASE_URL } from './api.service';
 
@@ -11,9 +11,10 @@ export class CeldasService {
   private readonly base = inject(API_BASE_URL);
   private readonly cells = `${this.base}/celdas`;
 
-  list(offset: number, limit: number) {
+  list(offset: number, limit: number, filters: Partial<FiltrosCeldas> = {}) {
+    const active = Object.fromEntries(Object.entries(filters).filter(([, value]) => value));
     return this.http
-      .get<CeldasPagina>(this.cells, { params: { offset, limit } })
+      .get<CeldasPagina>(this.cells, { params: { offset, limit, ...active } })
       .pipe(timeout(15000));
   }
   get(id: number) {
@@ -25,8 +26,10 @@ export class CeldasService {
   update(id: number, data: CeldaActualizar) {
     return this.http.patch<Celda>(`${this.cells}/${id}`, data).pipe(timeout(15000));
   }
-  delete(id: number) {
-    return this.http.delete<void>(`${this.cells}/${id}`).pipe(timeout(15000));
+  setEnabled(id: number, habilitada: boolean) {
+    return this.http
+      .patch<Celda>(`${this.cells}/${id}/habilitacion`, { habilitada })
+      .pipe(timeout(15000));
   }
 }
 

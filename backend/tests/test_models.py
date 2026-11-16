@@ -68,8 +68,8 @@ def test_migration_matches_models_without_connecting(monkeypatch):
     assert set(metadata.tables) == {"vehiculo", "celda", "operador"}
     for name, table in metadata.tables.items():
         model_table = Base.metadata.tables[name]
-        # 0001 es una revisión histórica; 0003 agrega la relación con cliente.
-        expected_columns = [c for c in model_table.columns if c.name != "cliente_id"]
+        # Las revisiones posteriores incorporan cliente_id (0003) y habilitada (0005).
+        expected_columns = [c for c in model_table.columns if c.name not in {"cliente_id", "habilitada"}]
         assert [(c.name, str(c.type), c.nullable) for c in table.columns] == [
             (c.name, str(c.type), c.nullable) for c in expected_columns
         ]

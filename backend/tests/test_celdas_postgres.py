@@ -1,5 +1,6 @@
 """Integración optativa sin DDL; todos los datos nuevos se revierten."""
 import os
+from datetime import datetime, timezone
 from uuid import uuid4
 
 import pytest
@@ -10,6 +11,7 @@ from sqlalchemy.orm import Session
 
 from app.database import get_engine, get_session
 from app.main import app
+from app.models import Cliente, Estancia, Operador, Vehiculo
 
 pytestmark = pytest.mark.skipif(os.getenv("RUN_POSTGRES_TESTS") != "1", reason="Requiere PostgreSQL local.")
 
@@ -28,17 +30,17 @@ def connection():
 def test_celda_schema_and_constraints(connection):
     inspector = inspect(connection)
     columns = {c['name']: c for c in inspector.get_columns('celda')}
-    assert set(columns) == {'id', 'codigo', 'tipo'}
+    assert set(columns) == {'id', 'codigo', 'tipo', 'habilitada'}
     assert str(columns['id']['type']) == 'BIGINT'
     assert columns['id']['identity']['always']
     assert all(not c['nullable'] for c in columns.values())
     assert inspector.get_pk_constraint('celda')['constrained_columns'] == ['id']
     assert any(c['column_names'] == ['codigo'] for c in inspector.get_unique_constraints('celda'))
     code = 'SCHEMA-' + uuid4().hex.upper()
-    connection.execute(text('INSERT INTO celda(codigo,tipo) VALUES (:code,:type)'), {'code':code,'type':'Libre'})
-    for code_value, kind, state in [(code,'Otro','23505'), (' lowercase ','Libre','23514'),
-                                    (' \t','Libre','23514'), (code+'X',' \t','23514'),
-                                    (None,'Libre','23502'), (code+'Y',None,'23502')]:
+    connection.execute(text('INSERT INTO celda(codigo,tipo) VALUES (:code,:type)'), {'code':code,'type':'MOTO'})
+    for code_value, kind, state in [(code,'MOTO','23505'), (' lowercase ','MOTO','23514'),
+                                    (' \t','MOTO','23514'), (code+'X',' \t','23514'),
+                                    (None,'MOTO','23502'), (code+'Y',None,'23502')]:
         with pytest.raises(IntegrityError) as error:
             with connection.begin_nested():
                 connection.execute(text('INSERT INTO celda(codigo,tipo) VALUES (:code,:type)'), {'code':code_value,'type':kind})
@@ -53,11 +55,12 @@ def test_crud_celdas(connection):
         try:
             with TestClient(app) as client:
                 code = 'CELL-' + uuid4().hex.upper()
-                payload = {'codigo': f' {code.lower()} ', 'tipo': ' Categoría libre '}
+                payload = {'codigo': f' {code.lower()} ', 'tipo': ' moto '}
                 result = client.post('/celdas', json=payload)
                 assert result.status_code == 201
                 item = result.json()
-                assert item['codigo'] == code and item['tipo'] == 'Categoría libre'
+                assert item['codigo'] == code and item['tipo'] == 'MOTO'
+                assert item['habilitada'] and not item['ocupada'] and not item['tiene_historial']
                 path = f"/celdas/{item['id']}"
                 assert client.get(path).json() == item
                 assert client.post('/celdas', json=payload).status_code == 409
@@ -67,13 +70,37 @@ def test_crud_celdas(connection):
                 for invalid in ({'id':1}, {'codigo':None}, {'tipo':' \t'}, {'tipo':None}):
                     assert client.patch(path, json=invalid).status_code == 422
                 assert client.post('/celdas', json={}).status_code == 422
-                changed = client.patch(path, json={'tipo':'Otro tipo libre'})
-                assert changed.status_code == 200 and changed.json()['tipo'] == 'Otro tipo libre'
-                deleted = client.delete(path)
-                assert deleted.status_code == 204 and deleted.content == b''
-                assert client.get(path).status_code == 404
-                assert client.patch(path, json={'tipo':'Libre'}).status_code == 404
-                assert client.delete(path).status_code == 404
+                changed = client.patch(path, json={'tipo':'AUTOMOVIL_CAMIONETA'})
+                assert changed.status_code == 200 and changed.json()['tipo'] == 'AUTOMOVIL_CAMIONETA'
+                disabled = client.patch(f'{path}/habilitacion', json={'habilitada': False})
+                assert disabled.status_code == 200 and not disabled.json()['habilitada']
+                filters = {'codigo': code.lower(), 'ocupada': False,
+                           'habilitada': False, 'tipo': 'AUTOMOVIL_CAMIONETA'}
+                assert client.get('/celdas', params=filters).json()['items'] == [disabled.json()]
+                enabled = client.patch(f'{path}/habilitacion', json={'habilitada': True})
+                assert enabled.status_code == 200 and enabled.json()['habilitada']
+                assert client.get('/celdas', params=filters).json()['items'] == []
+
+                owner = Cliente(nombre="Cliente de prueba", documento=code)
+                vehicle = Vehiculo(placa=uuid4().hex[:6].upper(), tipo="AUTOMOVIL", cliente=owner,
+                                   marca="Marca", modelo=2026, color="Gris")
+                operator = Operador(nombre="Operador de prueba", telefono="3000000000")
+                session.add_all([vehicle, operator])
+                session.flush()
+                stay = Estancia(vehiculo_id=vehicle.id, celda_id=item["id"], operador_entrada_id=operator.id,
+                                entrada=datetime.now(timezone.utc))
+                session.add(stay)
+                session.commit()
+                assert client.get(path).json()['ocupada']
+                assert client.patch(f'{path}/habilitacion', json={'habilitada': False}).status_code == 409
+                assert client.delete(path).status_code == 409
+                assert client.patch(path, json={'codigo': code + '-NUEVO'}).status_code == 409
+                stay.cerrar(datetime.now(timezone.utc), operator)
+                session.commit()
+                assert client.patch(path, json={'tipo': 'MOTO'}).status_code == 409
+                disabled = client.patch(f'{path}/habilitacion', json={'habilitada': False})
+                assert disabled.status_code == 200 and disabled.json()['tiene_historial']
+                assert not disabled.json()['ocupada']
                 assert client.get('/health').json() == {'status':'ok'}
         finally:
             app.dependency_overrides.pop(get_session, None)

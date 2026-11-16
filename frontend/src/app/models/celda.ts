@@ -5,6 +5,15 @@ export interface CeldaCrear {
 export type CeldaActualizar = Partial<CeldaCrear>;
 export interface Celda extends CeldaCrear {
   id: number;
+  habilitada: boolean;
+  ocupada: boolean;
+  tiene_historial: boolean;
+}
+export interface FiltrosCeldas {
+  codigo: string;
+  tipo: string;
+  habilitada: string;
+  ocupada: string;
 }
 export interface CeldasPagina {
   items: Celda[];

@@ -38,9 +38,9 @@ def main() -> int:
         with engine.connect() as c:
             actual = set(inspect(c).get_table_names(schema="public"))
             revision = c.scalar(text("SELECT version_num FROM alembic_version"))
-            if actual != EXPECTED | {"alembic_version"} or revision != "0004":
+            if actual != EXPECTED | {"alembic_version"} or revision != "0005":
                 raise ValueError("La estructura resultante requiere revisión; no se declara completada.")
-        print("Modelo físico aplicado: 10 tablas del proyecto y revisión 0004.")
+        print("Modelo físico aplicado: 10 tablas del proyecto y revisión 0005.")
         print("Las tablas están listas para la carga de datos y la integración de los servicios de acceso.")
         return 0
     except ConfigurationError as error:

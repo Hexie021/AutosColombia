@@ -88,6 +88,7 @@ class Celda(Base):
     id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
     codigo: Mapped[str] = mapped_column(Text, nullable=False)
     tipo: Mapped[str] = mapped_column(Text, nullable=False)
+    habilitada: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
 
     @validates("codigo", "tipo")
     def validate_text(self, key: str, value: str) -> str:

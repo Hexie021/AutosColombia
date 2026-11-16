@@ -29,7 +29,7 @@ interface EstadoEA1 {
 }
 interface Catalogos {
   operadores: { id: number; nombre: string }[];
-  celdas: { id: number; codigo: string; tipo: string; ocupada: boolean }[];
+  celdas: { id: number; codigo: string; tipo: string; ocupada: boolean; habilitada: boolean }[];
   resumen: {
     presentes: number;
     libres: number;
@@ -263,7 +263,7 @@ export class ControlAcceso {
   compatibles() {
     const state = this.estado();
     const tipo = state?.tipo === 'MOTO' ? 'MOTO' : 'AUTOMOVIL_CAMIONETA';
-    return this.catalogos()?.celdas.filter((c) => !c.ocupada && c.tipo === tipo) ?? [];
+    return this.catalogos()?.celdas.filter((c) => c.habilitada && !c.ocupada && c.tipo === tipo) ?? [];
   }
   fecha(value: string | null): string {
     if (!value) return '—';
