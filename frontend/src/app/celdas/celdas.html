@@ -1,23 +1,29 @@
 <section class="management" aria-labelledby="cells-title">
   <header class="heading">
     <div>
-      <span class="eyebrow">GESTIÓN DEL ESPACIO</span>
-      <h1 id="cells-title">Celdas</h1>
-      <p>Administra los espacios de Autos Colombia.</p>
+      <h1 id="cells-title">Gestión de celdas</h1>
+      <p>Consulta el catálogo y revisa la habilitación y la ocupación de cada celda.</p>
     </div>
-    <button class="primary" type="button" (click)="newCell()" [disabled]="busy()">
-      Nueva celda
-    </button>
   </header>
   @if (success()) {
-    <p class="notice success" role="status">{{ success() }}</p>
+    <div class="notice success toast" role="status">
+      <span>{{ success() }}</span>
+      <button type="button" aria-label="Cerrar aviso" (click)="success.set('')">×</button>
+    </div>
   }
-  @if (actionError()) {
+  @if (actionError() && !showForm() && !pendingChange()) {
     <p class="notice error" role="alert">{{ actionError() }}</p>
   }
-  @if (showForm()) {
-    <section class="panel" aria-labelledby="form-title">
-      <h2 id="form-title">{{ editing() === null ? 'Registrar celda' : 'Editar celda' }}</h2>
+  <dialog #cellDialog aria-labelledby="cell-dialog-title" (cancel)="handleEscape($event)">
+    <h2 id="cell-dialog-title">{{ dialogTitle() }}</h2>
+    @if (actionError() && (showForm() || pendingChange())) {
+      <p class="notice error" role="alert">{{ actionError() }}</p>
+    }
+    @if (warning() && showForm()) {
+      <p class="notice warning" role="alert">{{ warning() }}</p>
+    }
+    @if (showForm()) {
+      <p>El código debe ser único. Selecciona el tipo de vehículo que puede usar la celda.</p>
       <form [formGroup]="form" (ngSubmit)="save()" novalidate>
         <fieldset [disabled]="busy()">
           <legend class="sr-only">Datos de la celda</legend>
@@ -33,14 +39,14 @@
                     }
                   </select>
                 } @else {
-                <input
-                  type="text"
-                  [id]="field.key"
-                  [formControlName]="field.key"
-                  required
-                  [attr.aria-invalid]="!!fieldError(field.key)"
-                  [attr.aria-describedby]="field.key + '-error'"
-                />
+                  <input
+                    type="text"
+                    id="codigo"
+                    formControlName="codigo"
+                    required
+                    [attr.aria-invalid]="!!fieldError('codigo')"
+                    aria-describedby="codigo-error"
+                  />
                 }
                 <span class="field-error" [id]="field.key + '-error'">{{
                   fieldError(field.key)
@@ -55,40 +61,25 @@
           </div>
         </fieldset>
       </form>
-    </section>
-  }
-  @if (pendingChange(); as cell) {
-    <section
-      class="panel confirmation"
-      role="alertdialog"
-      aria-labelledby="change-title"
-      aria-describedby="change-description"
-    >
-      <h2 id="change-title">{{ cell.habilitada ? 'Deshabilitar' : 'Habilitar' }} celda {{ cell.codigo }}</h2>
-      <p id="change-description">
-        {{ cell.habilitada ? 'La celda dejará de estar disponible para nuevas asignaciones.' : 'La celda volverá a estar disponible para asignaciones compatibles.' }}
+    } @else if (pendingChange(); as cell) {
+      <p [class.notice]="cell.habilitada" [class.warning]="cell.habilitada">
+        {{ cell.habilitada ? 'La celda quedará fuera de nuevas asignaciones y conservará su historial.' : 'La celda volverá a estar disponible para asignaciones compatibles.' }}
       </p>
       <div class="actions">
-        <button type="button" (click)="cancel()" [disabled]="busy()">Cancelar</button
-        ><button type="button" class="primary" (click)="changeEnabled()" [disabled]="busy()">
+        <button type="button" (click)="cancel()" [disabled]="busy()">Cancelar</button>
+        <button type="button" class="primary" (click)="changeEnabled()" [disabled]="busy()">
           {{ saving() ? 'Guardando…' : 'Confirmar cambio' }}
         </button>
       </div>
-    </section>
-  }
-  <section class="panel list" aria-label="Listado de celdas" [attr.aria-busy]="loading()">
-    <div class="list-heading">
-      <h2>
-        Celdas registradas <span class="count">{{ total() }}</span>
-      </h2>
-      <button type="button" (click)="load()" [disabled]="busy()">Actualizar listado</button>
-    </div>
+    }
+  </dialog>
+  <section class="panel filters" aria-label="Filtros de celdas">
     <form [formGroup]="filtersForm" (ngSubmit)="applyFilters()">
       <fieldset [disabled]="busy()">
-        <legend>Filtrar celdas</legend>
+        <legend class="sr-only">Filtrar celdas</legend>
         <div class="form-grid">
-          <label>Código <input formControlName="codigo" maxlength="120" /></label>
-          <label>Tipo
+          <label>Buscar código <input formControlName="codigo" maxlength="120" placeholder="Escribe un código" /></label>
+          <label>Tipo de vehículo
             <select formControlName="tipo">
               <option value="">Todos</option>
               @for (type of types; track type.value) {
@@ -112,11 +103,20 @@
           </label>
         </div>
         <div class="actions">
-          <button type="submit">Aplicar filtros</button>
+          <button class="primary" type="submit">Consultar</button>
           <button type="button" (click)="filtersForm.reset(); applyFilters()">Limpiar filtros</button>
         </div>
       </fieldset>
     </form>
+  </section>
+  <section class="panel list" aria-label="Listado de celdas" [attr.aria-busy]="loading()">
+    <div class="list-heading">
+      <h2>Catálogo de celdas <span class="count">{{ total() }}</span></h2>
+      <div class="actions">
+        <button type="button" (click)="load()" [disabled]="busy()">Actualizar</button>
+        <button class="primary" type="button" (click)="newCell()" [disabled]="busy()">Registrar celda</button>
+      </div>
+    </div>
     @if (loading()) {
       <p class="empty" role="status">Cargando celdas…</p>
     } @else if (listError()) {
@@ -145,8 +145,8 @@
               <tr>
                 <th scope="row">{{ cell.codigo }}</th>
                 <td>{{ typeLabel(cell.tipo) }}</td>
-                <td>{{ cell.habilitada ? 'Habilitada' : 'Deshabilitada' }}</td>
-                <td>{{ cell.ocupada ? 'Ocupada' : 'Libre' }}</td>
+                <td><span class="tag" [class.success]="cell.habilitada">{{ cell.habilitada ? 'Habilitada' : 'Deshabilitada' }}</span></td>
+                <td><span class="tag" [class.warning]="cell.ocupada" [class.success]="!cell.ocupada">{{ cell.ocupada ? 'Ocupada' : 'Libre' }}</span></td>
                 <td class="row-actions">
                   <button
                     type="button"
@@ -159,6 +159,7 @@
                     type="button"
                     (click)="confirmChange(cell)"
                     [disabled]="busy() || (cell.habilitada && cell.ocupada)"
+                    [title]="cell.habilitada && cell.ocupada ? 'No se puede deshabilitar una celda ocupada' : ''"
                   >
                     {{ cell.habilitada ? 'Deshabilitar' : 'Habilitar' }}
                   </button>

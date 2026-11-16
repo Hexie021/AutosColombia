@@ -15,6 +15,12 @@ describe('Gestión de celdas', () => {
     http = TestBed.inject(HttpTestingController);
     fixture = TestBed.createComponent(Celdas);
     fixture.detectChanges();
+    const dialog = (fixture.nativeElement as HTMLElement).querySelector('dialog')!;
+    if (!dialog.showModal) {
+      // jsdom no implementa los métodos nativos de los diálogos.
+      dialog.showModal = () => { dialog.open = true; };
+      dialog.close = () => { dialog.open = false; };
+    }
     http
       .expectOne('/celdas?offset=0&limit=10')
       .flush({ items: [cell], total: 1, offset: 0, limit: 10 });
@@ -25,6 +31,7 @@ describe('Gestión de celdas', () => {
     fixture.componentInstance.newCell();
     fixture.detectChanges();
     const root = fixture.nativeElement as HTMLElement;
+    expect(root.querySelector('dialog[open]')?.textContent).toContain('Registrar celda');
     for (const [id, value] of Object.entries({
       codigo: ' a-02 ',
       tipo: 'MOTO',
@@ -44,6 +51,9 @@ describe('Gestión de celdas', () => {
       .expectOne('/celdas?offset=0&limit=10')
       .flush({ items: [cell], total: 1, offset: 0, limit: 10 });
     expect(fixture.componentInstance.success()).toContain('registrada');
+    fixture.detectChanges();
+    expect(root.querySelector('dialog[open]')).toBeNull();
+    expect(root.querySelector('.toast')?.textContent).toContain('registrada');
   });
 
   it('rechaza blancos y muestra duplicados junto al código', () => {
@@ -76,10 +86,12 @@ describe('Gestión de celdas', () => {
     const c = fixture.componentInstance;
     c.confirmChange(cell);
     fixture.detectChanges();
-    expect(fixture.nativeElement.querySelector('[role="alertdialog"]').textContent).toContain(
+    expect(fixture.nativeElement.querySelector('dialog[open]').textContent).toContain(
       'A-01',
     );
     c.cancel();
+    fixture.detectChanges();
+    expect(fixture.nativeElement.querySelector('dialog[open]')).toBeNull();
     http.expectNone((request) => request.method === 'PATCH');
     c.confirmChange(cell);
     c.changeEnabled();

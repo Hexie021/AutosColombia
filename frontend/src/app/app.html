@@ -1,14 +1,21 @@
 <div class="page-shell">
   <header class="site-header">
-    <a class="brand" routerLink="/control-acceso"
-      ><span class="brand-mark">P</span><span>Autos Colombia</span></a
-    >
+    <div class="header-top">
+      <a class="brand" routerLink="/control-acceso">
+        <span class="brand-mark">P</span><span>Autos Colombia</span>
+      </a>
+      @if (operador(); as cuenta) {
+        <div class="operator"><strong>{{ cuenta.nombre }}</strong><span>Operador</span></div>
+      }
+    </div>
     <nav aria-label="Navegación principal">
       <a routerLink="/control-acceso" routerLinkActive="active">Entrada y salida de vehículos</a>
-      @if (operador(); as cuenta) {
+      @if (operador()) {
         <a routerLink="/gestion/celdas" routerLinkActive="active">Gestión de celdas</a>
-        <a routerLink="/mi-cuenta">{{ cuenta.nombre }} · Mi cuenta</a>
-        <button type="button" (click)="cerrarSesion()">Cerrar sesión</button>
+        <div class="account-actions">
+          <a routerLink="/mi-cuenta" routerLinkActive="active">Mi cuenta</a>
+          <button type="button" (click)="cerrarSesion()">Cerrar sesión</button>
+        </div>
       }
     </nav>
     @if (errorSalida()) { <p role="alert">{{ errorSalida() }}</p> }

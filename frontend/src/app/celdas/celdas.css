@@ -12,12 +12,6 @@
 .heading {
   margin-bottom: 30px;
 }
-.eyebrow {
-  font-size: 11px;
-  letter-spacing: 2px;
-  color: #526c60;
-  font-weight: 700;
-}
 h1 {
   margin: 12px 0;
   font-size: 36px;
@@ -28,18 +22,23 @@ h2 {
   margin: 0;
 }
 p {
-  color: #586b60;
+  color: #52525b;
   line-height: 1.6;
 }
 .panel {
   padding: 26px;
-  border: 1px solid #dce2dc;
+  border: 1px solid #d1d1d6;
   background: #fff;
-  border-radius: 16px;
+  border-radius: 8px;
   margin-bottom: 24px;
 }
-.hint {
-  font-size: 13px;
+.filters .form-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-top: 0;
+}
+.filters label {
+  display: grid;
+  gap: 8px;
 }
 button,
 input,
@@ -49,30 +48,23 @@ select {
 }
 button {
   padding: 10px 14px;
-  border: 1px solid #c9d7ce;
-  color: #214c43;
+  border: 1px solid #d1d1d6;
+  color: #18181b;
   background: #fff;
   cursor: pointer;
   font-size: 14px;
 }
 button:hover:not(:disabled) {
-  background: #eef3ee;
+  background: #f2f2f3;
 }
 button.primary {
-  background: #214c43;
-  color: white;
-  border-color: #214c43;
+  background: #ffcf16;
+  border-color: #ffcf16;
+  color: #18181b;
+  font-weight: 700;
 }
 button.primary:hover:not(:disabled) {
-  background: #163d34;
-}
-button.danger {
-  background: #a03930;
-  color: white;
-  border-color: #a03930;
-}
-button.delete-link {
-  color: #a03930;
+  background: #f0bd00;
 }
 button:disabled {
   opacity: 0.5;
@@ -92,7 +84,7 @@ fieldset {
 }
 .form-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: 1fr;
   gap: 16px;
   margin: 20px 0;
 }
@@ -108,10 +100,10 @@ label {
 input,
 select {
   padding: 11px 12px;
-  border: 1px solid #b9c9bd;
+  border: 1px solid #d1d1d6;
   background: #fff;
   width: 100%;
-  color: #203a33;
+  color: #18181b;
 }
 [aria-invalid='true'] {
   border-color: #a03930;
@@ -132,23 +124,53 @@ select {
   font-size: 14px;
 }
 .success {
-  background: #e6f1e8;
-  color: #246044;
+  background: #ecfdf3;
+  color: #17603a;
 }
 .error {
-  background: #fff0ec;
-  color: #923b2e;
+  background: #fef2f2;
+  color: #991b1b;
 }
-.confirmation {
-  border-color: #d4a899;
-  background: #fffaf7;
+.warning {
+  background: #fffae8;
+  color: #85420b;
+}
+dialog {
+  width: min(520px, calc(100% - 32px));
+  max-height: calc(100% - 32px);
+  padding: 28px;
+  border: 1px solid #d1d1d6;
+  border-radius: 12px;
+  box-shadow: 0 20px 60px #18181b40;
+  color: #18181b;
+}
+dialog::backdrop {
+  background: #18181b80;
+}
+dialog .actions { justify-content: flex-end; }
+.toast {
+  position: fixed;
+  inset: auto 24px 24px auto;
+  z-index: 2;
+  max-width: min(420px, calc(100% - 48px));
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  box-shadow: 0 8px 24px #18181b26;
+  border: 1px solid #b7e1c7;
+}
+.toast button {
+  padding: 2px 8px;
+  color: inherit;
+  background: transparent;
+  font-size: 20px;
 }
 .list-heading {
   margin-bottom: 24px;
 }
 .count {
   margin-left: 8px;
-  background: #eef3ee;
+  background: #f2f2f3;
   padding: 3px 9px;
   border-radius: 15px;
   font-size: 13px;
@@ -165,14 +187,14 @@ table {
 th,
 td {
   padding: 16px 12px;
-  border-bottom: 1px solid #e6ebe5;
+  border-bottom: 1px solid #ededee;
   overflow-wrap: anywhere;
   max-width: 240px;
 }
 thead th {
-  color: #5d7063;
-  font-weight: 500;
-  background: #f6f8f4;
+  color: #52525b;
+  font-weight: 600;
+  background: #f2f2f3;
   white-space: nowrap;
 }
 .row-actions {
@@ -182,17 +204,21 @@ thead th {
   padding: 7px 10px;
   margin-right: 5px;
 }
-.type-tag {
-  font-size: 11px;
-  color: #365c4e;
-  background: #eef3ee;
-  padding: 5px 8px;
+.tag {
+  display: inline-block;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 5px 10px;
   border-radius: 6px;
+}
+.tag:not(.success, .warning) {
+  color: #52525b;
+  background: #f2f2f3;
 }
 .pagination {
   margin-top: 24px;
   font-size: 13px;
-  color: #586b60;
+  color: #52525b;
 }
 .empty {
   padding: 32px 0;
@@ -208,7 +234,7 @@ thead th {
   white-space: nowrap;
 }
 @media (max-width: 760px) {
-  .form-grid {
+  .filters .form-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
   .panel {
@@ -221,7 +247,7 @@ thead th {
   }
 }
 @media (max-width: 460px) {
-  .form-grid {
+  .filters .form-grid {
     grid-template-columns: 1fr;
   }
   h1 {

@@ -1,5 +1,5 @@
 import { HttpErrorResponse } from '@angular/common/http';
-import { Component, DestroyRef, computed, inject, signal } from '@angular/core';
+import { Component, DestroyRef, ElementRef, afterRenderEffect, computed, inject, signal, viewChild } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, ValidatorFn } from '@angular/forms';
 import { CeldasService } from '../services/celdas.service';
@@ -25,7 +25,7 @@ export class Celdas {
     { key: 'tipo' as const, label: 'Tipo' },
   ];
   readonly types = [
-    { value: 'AUTOMOVIL_CAMIONETA', label: 'Automóvil y camioneta' },
+    { value: 'AUTOMOVIL_CAMIONETA', label: 'Automóvil / camioneta' },
     { value: 'MOTO', label: 'Moto' },
   ];
 
@@ -55,11 +55,26 @@ export class Celdas {
   readonly pendingChange = signal<Celda | null>(null);
   readonly listError = signal('');
   readonly actionError = signal('');
+  readonly warning = signal('');
   readonly success = signal('');
+  private readonly dialog = viewChild.required<ElementRef<HTMLDialogElement>>('cellDialog');
+  readonly dialogTitle = computed(() => {
+    const cell = this.pendingChange();
+    if (cell) return `${cell.habilitada ? 'Deshabilitar' : 'Habilitar'} celda ${cell.codigo}`;
+    return this.editing() === null ? 'Registrar celda' : 'Editar celda';
+  });
   readonly page = computed(() => Math.floor(this.offset() / this.limit) + 1);
   readonly pages = computed(() => Math.max(1, Math.ceil(this.total() / this.limit)));
 
   constructor() {
+    afterRenderEffect(() => {
+      const dialog = this.dialog().nativeElement;
+      if (this.showForm() || this.pendingChange()) {
+        if (!dialog.open) dialog.showModal();
+      } else if (dialog.open) {
+        dialog.close();
+      }
+    });
     this.load();
   }
 
@@ -102,6 +117,7 @@ export class Celdas {
     this.showForm.set(true);
     this.pendingChange.set(null);
     this.actionError.set('');
+    this.warning.set('');
     this.success.set('');
   }
 
@@ -109,6 +125,7 @@ export class Celdas {
     if (this.busy() || cell.tiene_historial) return;
     this.loading.set(true);
     this.actionError.set('');
+    this.warning.set('');
     this.success.set('');
     this.pendingChange.set(null);
     this.api
@@ -133,6 +150,12 @@ export class Celdas {
     this.showForm.set(false);
     this.pendingChange.set(null);
     this.actionError.set('');
+    this.warning.set('');
+  }
+
+  handleEscape(event: Event): void {
+    event.preventDefault();
+    this.cancel();
   }
 
   fieldError(field: Field): string {
@@ -147,7 +170,8 @@ export class Celdas {
     if (this.busy()) return;
     this.form.markAllAsTouched();
     if (this.form.invalid) {
-      this.actionError.set('Revisa los campos señalados antes de guardar la celda.');
+      this.actionError.set('');
+      this.warning.set('Revisa los campos señalados antes de guardar la celda.');
       return;
     }
     const value = this.form.getRawValue();
@@ -158,6 +182,7 @@ export class Celdas {
     this.form.controls.codigo.setValue(payload.codigo);
     this.saving.set(true);
     this.actionError.set('');
+    this.warning.set('');
     this.success.set('');
     const id = this.editing();
     const request = id === null ? this.api.create(payload) : this.api.update(id, payload);

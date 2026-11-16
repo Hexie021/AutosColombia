@@ -1,19 +1,28 @@
 .page-shell {
-  max-width: 1280px;
+  max-width: 1440px;
   margin: auto;
-  padding: 0 32px;
+  padding: 0 48px;
 }
 .site-header {
-  min-height: 90px;
+  display: grid;
+  gap: 16px;
+  background: #18181b;
+  color: white;
+  padding: 20px 48px 12px;
+  margin: 0 -48px;
+}
+.header-top,
+.site-header nav,
+.account-actions {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 20px;
-  background: #191919;
-  color: white;
-  padding: 20px 24px;
-  margin: 0 -32px;
+  gap: 12px;
 }
+.header-top { justify-content: space-between; }
+.site-header nav, .account-actions { flex-wrap: wrap; }
+.account-actions { margin-inline-start: auto; }
+.operator { display: grid; text-align: right; gap: 3px; font-size: 14px; }
+.operator span { color: #bcbcc3; font-size: 12px; }
 .brand {
   display: flex;
   align-items: center;
@@ -32,14 +41,21 @@
   color: #191919;
   border-radius: 7px;
 }
-nav a {
-  color: #191919;
-  background: #ffcf16;
+.site-header nav a,
+.site-header nav button {
+  color: #fff;
+  background: transparent;
+  border: 1px solid transparent;
   padding: 12px 16px;
   border-radius: 7px;
   text-decoration: none;
+  font: inherit;
   font-weight: 600;
 }
+.site-header nav button { border-color: #66666d; cursor: pointer; }
+.site-header nav a:hover, .site-header nav button:hover { background: #303036; }
+.site-header nav a.active { color: #191919; background: #ffcf16; }
+.site-header nav :focus-visible { outline: 2px solid #ffcf16; outline-offset: 3px; }
 main {
   min-height: calc(100vh - 170px);
 }
@@ -58,8 +74,9 @@ footer {
   }
   .site-header {
     margin: 0 -18px;
-    flex-wrap: wrap;
+    padding-inline: 18px;
   }
+  .account-actions { margin-inline-start: 0; }
   footer {
     flex-wrap: wrap;
   }
