@@ -23,10 +23,11 @@
         <strong>{{ cat.resumen.autos_libres }} / {{ cat.resumen.motos_libres }}</strong
         ><span>Libres: autos / motos</span>
       </article>
-      <article>
-        <strong>{{ cat.resumen.inscritos }}</strong
-        ><span>Vehículos inscritos</span>
-      </article>
+      <a class="catalog-card" routerLink="/gestion/vehiculos">
+        <strong>{{ cat.resumen.inscritos }}</strong>
+        <span>Vehículos inscritos</span>
+        <span class="catalog-action">Ver catálogo <span aria-hidden="true">→</span></span>
+      </a>
     </div>
   }
   <nav class="tabs" aria-label="Operaciones">

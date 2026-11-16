@@ -33,6 +33,7 @@ p {
   margin: 24px 0;
 }
 .stats article,
+.stats .catalog-card,
 .panel {
   background: white;
   border: 1px solid #ddd;
@@ -47,6 +48,20 @@ p {
 .stats span {
   font-size: 14px;
   color: #555;
+}
+.catalog-card {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+}
+.catalog-card:hover {
+  border-color: #b88500;
+}
+.catalog-card .catalog-action {
+  display: block;
+  color: #725b00;
+  font-weight: 650;
+  margin-top: 8px;
 }
 .panel {
   margin: 24px 0;

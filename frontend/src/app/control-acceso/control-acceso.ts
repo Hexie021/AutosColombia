@@ -2,6 +2,7 @@ import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http'
 import { Component, DestroyRef, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { finalize, timeout } from 'rxjs';
 import { API_BASE_URL } from '../services/api.service';
 
@@ -48,7 +49,7 @@ interface Listado {
 
 @Component({
   selector: 'app-control-acceso',
-  imports: [FormsModule],
+  imports: [FormsModule, RouterLink],
   templateUrl: './control-acceso.html',
   styleUrl: './control-acceso.css',
 })
