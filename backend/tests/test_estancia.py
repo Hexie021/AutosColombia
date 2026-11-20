@@ -63,11 +63,11 @@ def test_relaciones_y_columnas():
     for relation in mapper.relationships:
         assert not relation.cascade.delete and not relation.cascade.delete_orphan
     table = Estancia.__table__
-    assert {c.name for c in table.c if c.nullable} == {"salida", "operador_salida_id"}
+    assert {c.name for c in table.c if c.nullable} == {"salida", "operador_salida_id", "mora_regularizada_pago_id"}
     assert isinstance(table.c.id.type, sa.BigInteger) and table.c.id.identity.always
     assert table.c.entrada.type.timezone and table.c.salida.type.timezone
     assert str(table.c.entrada.server_default.arg) == "now()"
-    assert len(table.foreign_keys) == 4
+    assert len(table.foreign_keys) == 5
     assert all(fk.ondelete == "RESTRICT" for fk in table.foreign_keys)
 
 
@@ -95,12 +95,12 @@ def test_migracion_coincide_con_modelo_y_compila_sql(monkeypatch):
         return sorted(line.strip().rstrip(",") for line in
                       str(CreateTable(table).compile(dialect=dialect)).splitlines())
 
-    # La revisión 0006 agregó la columna de mora y su restricción de cierre.
+    # Las revisiones posteriores agregan las columnas y restricciones de mora.
     assert ddl_parts(actual) == [
-        line for line in ddl_parts(expected) if "mora_pendiente" not in line
+        line for line in ddl_parts(expected) if "mora_pendiente" not in line and "mora_regularizada_pago_id" not in line
     ]
     assert {str(CreateIndex(i).compile(dialect=dialect)) for i in actual.indexes} == {
-        str(CreateIndex(i).compile(dialect=dialect)) for i in expected.indexes
+        str(CreateIndex(i).compile(dialect=dialect)) for i in expected.indexes if i.name != "ix_estancia_pago_mora"
     }
 
 

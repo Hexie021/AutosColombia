@@ -59,7 +59,7 @@ def test_datos_obligatorios_no_aceptan_blancos(model, field):
         model(**{field: " \t\n"})
 
 
-def test_cadena_de_migraciones_coincide_con_las_ocho_tablas(monkeypatch):
+def test_cadena_de_migraciones_coincide_con_el_modelo_operativo(monkeypatch):
     metadata = sa.MetaData()
     root = Path(__file__).resolve().parents[1] / "migrations/versions"
     statements = []
@@ -77,25 +77,25 @@ def test_cadena_de_migraciones_coincide_con_las_ocho_tablas(monkeypatch):
                         metadata.tables[table].append_constraint(sa.CheckConstraint(expression, name=name)))
     monkeypatch.setattr(op, "create_index", lambda name, table, cols, **kw:
                         sa.Index(name, *(metadata.tables[table].c[col] for col in cols), **kw))
-    for filename in ["0001_modelos_iniciales.py", "0002_estancia.py", "0003_modelo_ea1.py"]:
+    for filename in [
+        "0001_modelos_iniciales.py", "0002_estancia.py", "0003_modelo_ea1.py",
+        "0005_gestion_celdas.py", "0006_mora_pendiente.py", "0007_pagos_mensualidad.py",
+    ]:
         spec = importlib.util.spec_from_file_location("migration_" + filename[:-3], root / filename)
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
         module.upgrade()
     assert set(metadata.tables) == set(Base.metadata.tables) - {"cuenta_operador", "sesion_operador"}
-    assert len(metadata.tables) == 8
+    assert len(metadata.tables) == 9
     dialect = postgresql.dialect()
     for name, actual in metadata.tables.items():
         expected = Base.metadata.tables[name]
         assert {c.name: (str(c.type), c.nullable) for c in actual.columns} == {
-            c.name: (str(c.type), c.nullable) for c in expected.columns
-            if (name, c.name) not in {("celda", "habilitada"), ("estancia", "mora_pendiente")}}
+            c.name: (str(c.type), c.nullable) for c in expected.columns}
         assert actual.c.id.identity.always and expected.c.id.identity.always
         def checks(t):
             return {(c.name, str(c.sqltext)) for c in t.constraints if isinstance(c, sa.CheckConstraint)}
-        assert checks(actual) == {
-            check for check in checks(expected) if check[0] != "ck_estancia_mora_con_salida"
-        }, name
+        assert checks(actual) == checks(expected), name
         def fks(t):
             return {(f.parent.name, f.target_fullname, f.ondelete) for f in t.foreign_keys}
         assert fks(actual) == fks(expected), name

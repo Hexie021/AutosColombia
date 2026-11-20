@@ -3,21 +3,25 @@ from datetime import date, datetime, time, timedelta, timezone
 from zoneinfo import ZoneInfo
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
 from app.models import Celda, CorreccionCelda, Estancia, IncidenciaSalida, Operador, Vehiculo, VigenciaMensualidad, required_text
 from app.schemas.operacion import EntradaOperacion, SalidaOperacion, CorreccionOperacion
 from app.services.estancia import ServicioEstancia, EstanciaError, transaccion
 
 BOGOTA = ZoneInfo("America/Bogota")
 
+def vigencia_en_fecha(session: Session, vehiculo_id: int, ahora: datetime) -> VigenciaMensualidad | None:
+    return session.scalar(select(VigenciaMensualidad).where(
+        VigenciaMensualidad.vehiculo_id == vehiculo_id,
+        VigenciaMensualidad.inicio <= ahora, VigenciaMensualidad.vencimiento > ahora,
+    ).order_by(VigenciaMensualidad.vencimiento.desc()).limit(1))
+
 def tipo_celda(tipo: str) -> str:
     return "MOTO" if tipo == "MOTO" else "AUTOMOVIL_CAMIONETA"
 
 class ServicioOperacion(ServicioEstancia):
     def _vigencia(self, vehiculo_id: int, ahora: datetime):
-        return self.session.scalar(select(VigenciaMensualidad).where(
-            VigenciaMensualidad.vehiculo_id == vehiculo_id,
-            VigenciaMensualidad.inicio <= ahora, VigenciaMensualidad.vencimiento > ahora,
-        ).order_by(VigenciaMensualidad.vencimiento.desc()).limit(1))
+        return vigencia_en_fecha(self.session, vehiculo_id, ahora)
 
     def _abierta(self, vehiculo_id: int, bloquear: bool = False):
         query = select(Estancia).where(Estancia.vehiculo_id == vehiculo_id, Estancia.salida.is_(None))
@@ -31,7 +35,8 @@ class ServicioOperacion(ServicioEstancia):
                 "celda_id": celda.id, "entrada": estancia.entrada, "salida": estancia.salida,
                 "operador_entrada": estancia.operador_entrada.nombre,
                 "operador_salida": estancia.operador_salida.nombre if estancia.operador_salida else None,
-                "mora_pendiente": estancia.mora_pendiente}
+                "mora_pendiente": estancia.mora_pendiente,
+                "mora_regularizada": estancia.mora_regularizada_pago_id is not None}
 
     @transaccion
     def consultar_operacion(self, placa: str) -> dict:
@@ -82,7 +87,7 @@ class ServicioOperacion(ServicioEstancia):
 
     @transaccion
     def registrar_salida(self, data: SalidaOperacion) -> dict:
-        vehiculo = self._vehiculo(data.placa)
+        vehiculo = self._vehiculo(data.placa, bloquear=True)
         operador = self._operador(data.operador_id)
         estancia = self._abierta(vehiculo.id, bloquear=True)
         if estancia is None:

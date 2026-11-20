@@ -51,8 +51,9 @@ class ServicioEstancia:
     def __init__(self, session: Session) -> None:
         self.session = session
 
-    def _vehiculo(self, placa: str) -> Vehiculo:
-        vehiculo = self.session.scalar(select(Vehiculo).where(Vehiculo.placa == placa))
+    def _vehiculo(self, placa: str, bloquear: bool = False) -> Vehiculo:
+        consulta = select(Vehiculo).where(Vehiculo.placa == placa)
+        vehiculo = self.session.scalar(consulta.with_for_update() if bloquear else consulta)
         if vehiculo is None:
             raise EstanciaError(404, "Vehículo no encontrado.")
         return vehiculo

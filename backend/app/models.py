@@ -2,9 +2,10 @@
 
 from calendar import monthrange
 from datetime import datetime, timezone
+from uuid import UUID
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import Boolean, BigInteger, CheckConstraint, DateTime, ForeignKey, Identity, Index, Integer, String, Text, UniqueConstraint, func, text
+from sqlalchemy import Boolean, BigInteger, CheckConstraint, DateTime, ForeignKey, Identity, Index, Integer, String, Text, UniqueConstraint, Uuid, func, text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, validates
 
 
@@ -122,6 +123,10 @@ class Estancia(Base):
         CheckConstraint("salida >= entrada", name="ck_estancia_orden_fechas"),
         CheckConstraint("NOT mora_pendiente OR salida IS NOT NULL", name="ck_estancia_mora_con_salida"),
         CheckConstraint(
+            "mora_regularizada_pago_id IS NULL OR (salida IS NOT NULL AND NOT mora_pendiente)",
+            name="ck_estancia_mora_regularizada",
+        ),
+        CheckConstraint(
             "(salida IS NULL) = (operador_salida_id IS NULL)",
             name="ck_estancia_cierre_completo",
         ),
@@ -130,6 +135,7 @@ class Estancia(Base):
         Index("uq_estancia_celda_abierta", "celda_id", unique=True,
               postgresql_where=text("salida IS NULL")),
         Index("ix_estancia_vehiculo_entrada", "vehiculo_id", "entrada"),
+        Index("ix_estancia_pago_mora", "mora_regularizada_pago_id"),
     )
 
     id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
@@ -142,6 +148,9 @@ class Estancia(Base):
     entrada: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
     salida: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     mora_pendiente: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("false"))
+    mora_regularizada_pago_id: Mapped[int | None] = mapped_column(
+        ForeignKey("pago_mensualidad.id", name="fk_estancia_pago_mora", ondelete="RESTRICT")
+    )
     operador_entrada_id: Mapped[int] = mapped_column(
         BigInteger, ForeignKey("operador.id", name="fk_estancia_operador_entrada", ondelete="RESTRICT"), nullable=False
     )
@@ -210,6 +219,47 @@ class VigenciaMensualidad(Base):
 
     def esta_vigente(self, fecha: datetime) -> bool:
         return self.inicio <= fecha_con_zona(fecha) < self.vencimiento
+
+
+class PagoMensualidad(Base):
+    __tablename__ = "pago_mensualidad"
+    __table_args__ = (
+        UniqueConstraint("solicitud_id", name="uq_pago_solicitud"),
+        UniqueConstraint("vigencia_id", name="uq_pago_vigencia"),
+        CheckConstraint("importe > 0", name="ck_pago_importe_positivo"),
+        CheckConstraint(
+            "concepto IN ('PRIMERA_MENSUALIDAD', 'RENOVACION', 'RENOVACION_CON_MORA')",
+            name="ck_pago_concepto",
+        ),
+        Index("ix_pago_fecha", "fecha", "id"),
+        Index("ix_pago_placa_fecha", "placa", "fecha", "id"),
+    )
+    id: Mapped[int] = mapped_column(BigInteger, Identity(always=True), primary_key=True)
+    solicitud_id: Mapped[UUID] = mapped_column(Uuid)
+    vehiculo_id: Mapped[int] = mapped_column(ForeignKey("vehiculo.id", name="fk_pago_vehiculo", ondelete="RESTRICT"))
+    vigencia_id: Mapped[int] = mapped_column(
+        ForeignKey("vigencia_mensualidad.id", name="fk_pago_vigencia", ondelete="RESTRICT")
+    )
+    vigencia_anterior_id: Mapped[int | None] = mapped_column(
+        ForeignKey("vigencia_mensualidad.id", name="fk_pago_vigencia_anterior", ondelete="RESTRICT")
+    )
+    mora_pendiente_id: Mapped[int | None] = mapped_column(
+        ForeignKey("estancia.id", name="fk_pago_mora", ondelete="RESTRICT")
+    )
+    operador_id: Mapped[int] = mapped_column(ForeignKey("operador.id", name="fk_pago_operador", ondelete="RESTRICT"))
+    fecha: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    concepto: Mapped[str] = mapped_column(String(24))
+    importe: Mapped[int] = mapped_column(Integer)
+    placa: Mapped[str] = mapped_column(Text)
+    tipo: Mapped[str] = mapped_column(Text)
+    cliente: Mapped[str] = mapped_column(Text)
+    operador: Mapped[str] = mapped_column(Text)
+    vigencia: Mapped[VigenciaMensualidad] = relationship(foreign_keys=[vigencia_id])
+
+    @property
+    def referencia(self) -> str:
+        local = self.fecha.astimezone(ZoneInfo("America/Bogota"))
+        return f"PAG-{local:%Y%m%d}-{self.id:03d}"
 
 
 class CorreccionCelda(Base):
