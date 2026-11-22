@@ -14,13 +14,15 @@ from app.services.estancia import EstanciaError
 from app.routers.operacion import router as operacion_router
 from app.routers.pagos import router as pagos_router
 
-from app.routers.acceso import operador_actual, router as acceso_router
+from app.routers.acceso import administrador_actual, operador_actual, router as acceso_router
+from app.routers.cuentas import router as cuentas_router
 
 app = FastAPI(title="Autos Colombia API")
 app.include_router(acceso_router)
+app.include_router(cuentas_router, dependencies=[Depends(administrador_actual)])
 app.include_router(vehiculos_router, dependencies=[Depends(operador_actual)])
-app.include_router(celdas_router, dependencies=[Depends(operador_actual)])
-app.include_router(operadores_router, dependencies=[Depends(operador_actual)])
+app.include_router(celdas_router, dependencies=[Depends(administrador_actual)])
+app.include_router(operadores_router, dependencies=[Depends(administrador_actual)])
 app.include_router(operacion_router, dependencies=[Depends(operador_actual)])
 app.include_router(pagos_router)
 # Los CRUD originales quedan como apoyo; las rutas antiguas de estancia no se publican,

@@ -54,6 +54,8 @@ def test_patch_forbids_id_and_unknown_fields(api):
 @pytest.mark.parametrize("sqlstate, status", [("23503", 409), ("23502", 422), ("23514", 422)])
 def test_database_conflicts_roll_back_and_hide_details(api, sqlstate, status):
     client, session = api
+    perfil = session.get.return_value
+    session.get.side_effect = [perfil, None]
     driver_error = Exception("PRIVATE DRIVER DETAILS")
     driver_error.sqlstate = sqlstate
     session.commit.side_effect = IntegrityError("DELETE", {}, driver_error)
@@ -62,7 +64,7 @@ def test_database_conflicts_roll_back_and_hide_details(api, sqlstate, status):
     assert "PRIVATE" not in result.text
     assert isinstance(result.json()["detail"], str)
     session.rollback.assert_called_once()
-    session.delete.assert_called_once_with(session.get.return_value)
+    session.delete.assert_called_once_with(perfil)
 
 
 def test_database_failure_rolls_back_and_is_generic(api):
@@ -76,6 +78,6 @@ def test_database_failure_rolls_back_and_is_generic(api):
 
 @pytest.fixture(autouse=True)
 def operador_autenticado(monkeypatch):
-    from app.routers.acceso import operador_actual
+    from app.routers.acceso import administrador_actual
 
-    monkeypatch.setitem(app.dependency_overrides, operador_actual, lambda: 1)
+    monkeypatch.setitem(app.dependency_overrides, administrador_actual, lambda: 1)

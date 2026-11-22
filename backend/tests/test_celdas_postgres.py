@@ -108,6 +108,6 @@ def test_crud_celdas(connection):
 
 @pytest.fixture(autouse=True)
 def operador_autenticado(monkeypatch):
-    from app.routers.acceso import operador_actual
+    from app.routers.acceso import administrador_actual
 
-    monkeypatch.setitem(app.dependency_overrides, operador_actual, lambda: 1)
+    monkeypatch.setitem(app.dependency_overrides, administrador_actual, lambda: 1)

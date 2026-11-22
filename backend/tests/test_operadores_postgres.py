@@ -86,7 +86,7 @@ def test_operadores_structure_and_crud():
                     assert client.delete(path).status_code == 404
                     assert client.get("/operadores").json()["total"] == initial["total"]
                     assert client.get("/health").json() == {"status": "ok"}
-                    assert client.get("/vehiculos?limit=1").status_code == 200
+                    assert client.get("/vehiculos?limit=1").status_code == 401
                     assert client.get("/celdas?limit=1").status_code == 200
         finally:
             app.dependency_overrides.pop(get_session, None)
@@ -95,6 +95,6 @@ def test_operadores_structure_and_crud():
 
 @pytest.fixture(autouse=True)
 def operador_autenticado(monkeypatch):
-    from app.routers.acceso import operador_actual
+    from app.routers.acceso import administrador_actual
 
-    monkeypatch.setitem(app.dependency_overrides, operador_actual, lambda: 1)
+    monkeypatch.setitem(app.dependency_overrides, administrador_actual, lambda: 1)

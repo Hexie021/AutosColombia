@@ -4,7 +4,7 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
-from app.models import Operador
+from app.models import CuentaOperador, Operador
 from app.schemas.operador import OperadorActualizar, OperadorCrear
 
 
@@ -75,6 +75,8 @@ def update_operator(session: Session, operator_id: int, data: OperadorActualizar
 @database_operation
 def delete_operator(session: Session, operator_id: int) -> None:
     operator = find_operator(session, operator_id)
+    if session.get(CuentaOperador, operator_id):
+        raise OperadorError(409, "Los perfiles con cuenta se conservan. Puedes desactivar la cuenta de operador.")
     session.delete(operator)
     session.commit()
 

@@ -4,10 +4,13 @@ import { CanActivateFn, Router } from '@angular/router';
 import { catchError, map, of, tap } from 'rxjs';
 import { API_BASE_URL } from './api.service';
 
+export type Rol = 'ADMINISTRADOR' | 'OPERADOR';
+
 interface OperadorEnSesion {
   id: number;
   nombre: string;
   usuario: string;
+  rol: Rol;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -43,9 +46,16 @@ export class AccesoService {
   }
 }
 
-export const requiereOperador: CanActivateFn = () => {
-  const router = inject(Router);
-  return inject(AccesoService).consultar().pipe(
-    map((operador) => operador ? true : router.createUrlTree(['/iniciar-sesion'])),
-  );
-};
+export function inicioSegunRol(rol: Rol): string {
+  return rol === 'ADMINISTRADOR' ? '/gestion/cuentas' : '/control-acceso';
+}
+
+export function requiereSesion(rol?: Rol): CanActivateFn {
+  return () => {
+    const router = inject(Router);
+    return inject(AccesoService).consultar().pipe(map((cuenta) => {
+      if (!cuenta) return router.createUrlTree(['/iniciar-sesion']);
+      return !rol || cuenta.rol === rol ? true : router.createUrlTree([inicioSegunRol(cuenta.rol)]);
+    }));
+  };
+}

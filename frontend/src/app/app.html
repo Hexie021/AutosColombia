@@ -1,18 +1,24 @@
 <div class="page-shell">
   <header class="site-header">
     <div class="header-top">
-      <a class="brand" routerLink="/control-acceso">
+      <a class="brand" routerLink="/">
         <span class="brand-mark">P</span><span>Autos Colombia</span>
       </a>
       @if (operador(); as cuenta) {
-        <div class="operator"><strong>{{ cuenta.nombre }}</strong><span>Operador</span></div>
+        <div class="operator"><strong>{{ cuenta.nombre }}</strong>
+          <span>{{ cuenta.rol === 'ADMINISTRADOR' ? 'Administrador' : 'Operador' }}</span>
+        </div>
       }
     </div>
     <nav aria-label="Navegación principal">
-      <a routerLink="/control-acceso" routerLinkActive="active">Entrada y salida de vehículos</a>
-      @if (operador()) {
-        <a routerLink="/gestion/pagos" routerLinkActive="active">Pagos</a>
-        <a routerLink="/gestion/celdas" routerLinkActive="active">Gestión de celdas</a>
+      @if (operador(); as cuenta) {
+        @if (cuenta.rol === 'ADMINISTRADOR') {
+          <a routerLink="/gestion/cuentas" routerLinkActive="active">Cuentas de operador</a>
+          <a routerLink="/gestion/celdas" routerLinkActive="active">Gestión de celdas</a>
+        } @else {
+          <a routerLink="/control-acceso" routerLinkActive="active">Entrada y salida de vehículos</a>
+          <a routerLink="/gestion/pagos" routerLinkActive="active">Pagos</a>
+        }
         <div class="account-actions">
           <a routerLink="/mi-cuenta" routerLinkActive="active">Mi cuenta</a>
           <button type="button" (click)="cerrarSesion()">Cerrar sesión</button>

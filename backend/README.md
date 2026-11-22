@@ -5,7 +5,7 @@ FastAPI, SQLAlchemy y PostgreSQL. Consulta el **README.md de la raíz** para ins
 - API de la entrega: `/operacion/*` y `/pagos/*`.
 - `/health` no depende de PostgreSQL.
 - Configuración privada: `.env` local; no versionar.
-- Migración vigente: `0007`.
+- Migración vigente: `0008`.
 - Demostración: `scripts/cargar_demo.py`.
 - Verificación de integración: `scripts/verificar_ea1.py`, que revierte sus datos temporales.
 

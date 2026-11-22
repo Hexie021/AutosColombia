@@ -321,10 +321,15 @@ class IncidenciaSalida(Base):
 
 class CuentaOperador(Base):
     __tablename__ = "cuenta_operador"
+    __table_args__ = (
+        CheckConstraint("rol IN ('OPERADOR', 'ADMINISTRADOR')", name="ck_cuenta_operador_rol"),
+    )
 
     operador_id: Mapped[int] = mapped_column(ForeignKey("operador.id", ondelete="CASCADE"), primary_key=True)
     usuario: Mapped[str] = mapped_column(String(80), unique=True, nullable=False)
     clave: Mapped[str] = mapped_column(String(97), nullable=False)
+    rol: Mapped[str] = mapped_column(String(13), nullable=False, server_default="OPERADOR")
+    activa: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default=text("true"))
 
 
 class SesionOperador(Base):

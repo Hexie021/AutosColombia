@@ -10,7 +10,9 @@ from app.routers.acceso import COOKIE, hash_token, huella_clave
 
 
 def test_acceso_emite_cookie_y_protege_catalogo():
-    cuenta = CuentaOperador(operador_id=1, usuario="operador", clave=huella_clave("clave de prueba"))
+    cuenta = CuentaOperador(
+        operador_id=1, usuario="operador", clave=huella_clave("clave de prueba"), rol="OPERADOR", activa=True
+    )
     operador = Operador(id=1, nombre="Operador", telefono="000")
     sesiones = {}
     db = MagicMock()
@@ -41,7 +43,14 @@ def test_acceso_emite_cookie_y_protege_catalogo():
             acceso = client.post("/acceso/iniciar", json={"usuario": "OPERADOR", "contrasena": "clave de prueba"})
             assert acceso.status_code == 200
             assert "HttpOnly" in acceso.headers["set-cookie"]
+            assert acceso.json()["rol"] == "OPERADOR"
             assert client.get("/acceso/sesion").json()["id"] == 1
+            assert client.get("/celdas").status_code == 403
+            assert client.get("/acceso/cuentas").status_code == 403
+            cuenta.activa = False
+            assert client.get("/acceso/sesion").status_code == 401
+            assert client.post("/acceso/iniciar", json={"usuario": "operador", "contrasena": "clave de prueba"}).status_code == 401
+            cuenta.activa = True
             cambio = client.post("/acceso/contrasena", json={"actual": "incorrecta", "nueva": "otra clave de prueba"})
             assert cambio.status_code == 400
             cambio = client.post("/acceso/contrasena", json={"actual": "clave de prueba", "nueva": "otra clave de prueba"})

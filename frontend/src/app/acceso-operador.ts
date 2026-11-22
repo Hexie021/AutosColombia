@@ -3,7 +3,7 @@ import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { finalize, Observable } from 'rxjs';
-import { AccesoService } from './services/acceso.service';
+import { AccesoService, inicioSegunRol } from './services/acceso.service';
 
 @Component({
   selector: 'app-acceso-operador',
@@ -74,7 +74,8 @@ export class AccesoOperador {
         if (this.cambio) {
           void this.router.navigate(['/iniciar-sesion'], { queryParams: { clave: 'actualizada' } });
         } else {
-          void this.router.navigate(['/control-acceso']);
+          const cuenta = this.acceso.operador();
+          if (cuenta) void this.router.navigateByUrl(inicioSegunRol(cuenta.rol));
         }
       },
       error: (e: HttpErrorResponse) => {

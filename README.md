@@ -218,3 +218,24 @@ original en el historial de estancias.
 La API expone `GET /pagos/vehiculo/{placa}`, `POST /pagos/mensualidad`,
 `GET /pagos/historial` y `GET /pagos/comprobante/{id}`. Las cuatro rutas
 requieren una sesión de operador.
+
+### Administración de celdas y cuentas
+
+Las cuentas existentes conservan el perfil **Operador** al aplicar la revisión
+0008. Para crear el primer **Administrador**, abre una terminal en `backend`
+y ejecuta:
+
+```powershell
+.\.venv\Scripts\python.exe -m alembic upgrade head
+.\.venv\Scripts\python.exe -m app.crear_cuenta admin --administrador --nombre "Administrador de prueba" --telefono "0000000000"
+```
+
+El comando pide la contraseña de forma interactiva. Inicia sesión como
+administrador para abrir **Cuentas de operador** y **Gestión de celdas**.
+Desde la aplicación puedes crear una cuenta de operador, actualizar sus
+datos, cambiar su contraseña y desactivarla o reactivarla. Desactivar una
+cuenta o cambiar su usuario o contraseña cierra sus sesiones.
+
+Usa una cuenta de operador para registrar entradas y salidas, gestionar
+pagos y consultar el catálogo de vehículos. Verifica ambos perfiles en la
+demostración. La API aplica la misma separación que el menú.
