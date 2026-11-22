@@ -183,3 +183,38 @@ Reinicia la API y Angular para cargar las rutas y el proxy actualizados. Abre
 la aplicación e inicia sesión. Después de cambiar la contraseña, vuelve a
 iniciar sesión con la nueva. La API utiliza la identidad autenticada para
 registrar las operaciones.
+
+## EA3 Gestión de pagos
+
+Con PostgreSQL iniciado, ejecuta desde `backend`:
+
+```powershell
+.\.venv\Scripts\python.exe -m alembic upgrade head
+.\.venv\Scripts\python.exe scripts\cargar_demo.py --ea3
+```
+
+La revisión 0007 conserva las vigencias y estancias previas. La segunda
+instrucción es opcional y agrega estos casos ficticios al cargar cada placa
+por primera vez:
+
+| Placa | Caso inicial |
+|---|---|
+| ABC12D | Primera mensualidad de moto, $100.000 COP |
+| XYZ789 | Renovación anticipada de camioneta, $150.000 COP |
+| KLM456 | Renovación de automóvil con mora, $150.000 COP sin recargo |
+| QRS234 | Renovación de automóvil con plan vencido sin mora, $150.000 COP |
+
+Reinicia la API y el servidor de Angular para aplicar el proxy de pagos. Entra
+con tu cuenta de operador y abre **Pagos**. Consulta una placa y confirma el
+pago que ya recibiste. En **Historial de pagos** puedes filtrar por placa y
+por fechas de Colombia, y recuperar el comprobante original.
+
+La vigencia de ingreso se actualiza en la misma transacción que guarda el
+pago. La renovación anticipada continúa al vencimiento del último periodo
+pagado. La renovación vencida comienza al registrar el pago. Si hay una mora
+pendiente, se regulariza con la misma renovación y se conserva la salida
+original en el historial de estancias.
+
+La API expone `GET /pagos/vehiculo/{placa}`, `POST /pagos/mensualidad`,
+`GET /pagos/historial` y `GET /pagos/comprobante/{id}`. Las cuatro rutas
+requieren una sesión de operador.

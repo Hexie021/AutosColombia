@@ -1,0 +1,133 @@
+<section aria-labelledby="pagos-titulo">
+  <h1 id="pagos-titulo">Gestión de pagos</h1>
+  <div class="vistas" role="group" aria-label="Vistas de pagos">
+    <button type="button" [attr.aria-pressed]="vista() === 'consulta'" [disabled]="ocupado() || confirmar()"
+      (click)="cambiarVista('consulta')">Consulta de pagos</button>
+    <button type="button" [attr.aria-pressed]="vista() === 'historial'" [disabled]="ocupado() || confirmar()"
+      (click)="cambiarVista('historial')">Historial de pagos</button>
+  </div>
+
+  @if (error()) { <p class="aviso error" role="alert">{{ error() }}</p> }
+  @if (ocupado()) {
+    <p role="status">{{ confirmar() ? 'Registrando el pago recibido…' : 'Cargando…' }}</p>
+  }
+
+  @if (vista() === 'consulta') {
+    <form class="panel filtros" [formGroup]="consultaForm" (ngSubmit)="consultar()">
+      <label>Placa
+        <input formControlName="placa" (input)="limpiarConsulta()" [readOnly]="ocupado() || confirmar()"
+          autocomplete="off" required placeholder="ABC123" />
+      </label>
+      <button type="submit" class="principal" [disabled]="ocupado() || confirmar() || !placa.value.trim()">Consultar</button>
+    </form>
+
+    @if (consulta(); as vehiculo) {
+      <article class="panel">
+        <h2>{{ vehiculo.placa }} · {{ tipoVehiculo(vehiculo.tipo) }}</h2>
+        <dl class="datos">
+          <div><dt>Titular</dt><dd>{{ vehiculo.cliente }}</dd></div>
+          <div><dt>Estado</dt><dd>{{ estado(vehiculo) }}</dd></div>
+          <div><dt>Tarifa mensual</dt><dd>{{ moneda(vehiculo.tarifa) }}</dd></div>
+          <div>
+            <dt>{{ vehiculo.vigencia_actual ? 'Vencimiento del periodo vigente' : 'Último vencimiento' }}</dt>
+            <dd>
+              @if (vehiculo.vigencia_actual ?? vehiculo.ultima_vigencia; as vigencia) {
+                {{ vigencia.vencimiento | date:'dd/MM/yyyy HH:mm':horaColombia }}
+              } @else { Sin mensualidad registrada }
+            </dd>
+          </div>
+        </dl>
+
+        @if (vehiculo.mora_pendiente.length) {
+          <div class="aviso mora">
+            <strong>Mora pendiente</strong>
+            @for (mora of vehiculo.mora_pendiente; track mora.estancia_id) {
+              <p>Salida #{{ mora.estancia_id }} · {{ mora.salida | date:'dd/MM/yyyy HH:mm':horaColombia }} · {{ mora.operador }}</p>
+            }
+            <p>La renovación regulariza la mora con el mismo pago. Recargo $0.</p>
+          </div>
+        }
+
+        @if (confirmar()) {
+          <div class="confirmacion">
+            <h3>Confirmar pago recibido</h3>
+            <dl class="datos">
+              <div><dt>Inicio del periodo</dt><dd>{{ vehiculo.periodo_estimado.inicio | date:'dd/MM/yyyy HH:mm':horaColombia }}</dd></div>
+              <div><dt>Vencimiento del periodo</dt><dd>{{ vehiculo.periodo_estimado.vencimiento | date:'dd/MM/yyyy HH:mm':horaColombia }}</dd></div>
+              <div><dt>Total</dt><dd>{{ moneda(vehiculo.tarifa) }}</dd></div>
+            </dl>
+            <p>La vigencia se calcula nuevamente al registrar el pago. Horas de Colombia.</p>
+            <div class="acciones">
+              <button type="button" class="principal" [disabled]="ocupado()" (click)="registrar()">Confirmar pago</button>
+              <button type="button" [disabled]="ocupado()" (click)="confirmar.set(false)">Cancelar</button>
+            </div>
+          </div>
+        } @else {
+          <button type="button" class="principal" [disabled]="ocupado()" (click)="prepararPago()">
+            @if (vehiculo.mora_pendiente.length) { Renovar y regularizar }
+            @else if (vehiculo.ultima_vigencia) { Renovar mensualidad }
+            @else { Registrar primera mensualidad }
+          </button>
+        }
+      </article>
+    }
+  } @else {
+    <form class="panel filtros" [formGroup]="historialForm" (ngSubmit)="aplicarFiltros()">
+      <label>Placa <input formControlName="placa" [readOnly]="ocupado()" autocomplete="off" /></label>
+      <label>Desde <input type="date" formControlName="desde" [readOnly]="ocupado()" /></label>
+      <label>Hasta <input type="date" formControlName="hasta" [readOnly]="ocupado()" /></label>
+      <button type="submit" class="principal" [disabled]="ocupado()">Filtrar</button>
+    </form>
+
+    @if (historial(); as pagina) {
+      <div class="panel">
+        @if (pagina.items.length) {
+          <div class="tabla">
+            <table>
+              <thead><tr><th scope="col">Fecha y hora</th><th scope="col">Placa</th>
+                <th scope="col">Concepto</th><th scope="col">Importe</th><th scope="col">Operador</th>
+                <th scope="col">Comprobante</th></tr></thead>
+              <tbody>
+                @for (pago of pagina.items; track pago.id) {
+                  <tr>
+                    <td>{{ pago.fecha | date:'dd/MM/yyyy HH:mm':horaColombia }}</td>
+                    <td>{{ pago.placa }}</td><td>{{ conceptos[pago.concepto] }}</td>
+                    <td>{{ moneda(pago.importe) }}</td><td>{{ pago.operador }}</td>
+                    <td><button type="button" [disabled]="ocupado()" (click)="abrirComprobante(pago.id)">
+                      {{ pago.referencia }}</button></td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+          <div class="acciones paginacion">
+            <button type="button" [disabled]="!offset() || ocupado()" (click)="cargarHistorial(offset() - limite)">Anterior</button>
+            <span>{{ offset() + 1 }}–{{ offset() + pagina.items.length }} de {{ pagina.total }}</span>
+            <button type="button" [disabled]="offset() + limite >= pagina.total || ocupado()"
+              (click)="cargarHistorial(offset() + limite)">Siguiente</button>
+          </div>
+        } @else { <p>No hay pagos para estos filtros.</p> }
+      </div>
+    }
+  }
+
+  @if (recibo(); as pago) {
+    <article class="panel comprobante" aria-labelledby="comprobante-titulo">
+      <h2 id="comprobante-titulo">Comprobante interno · {{ pago.referencia }}</h2>
+      <dl class="datos">
+        <div><dt>Placa y vehículo</dt><dd>{{ pago.placa }} · {{ tipoVehiculo(pago.tipo) }}</dd></div>
+        <div><dt>Titular</dt><dd>{{ pago.cliente }}</dd></div>
+        <div><dt>Concepto</dt><dd>{{ conceptos[pago.concepto] }}</dd></div>
+        <div><dt>Importe</dt><dd>{{ moneda(pago.importe) }}</dd></div>
+        <div><dt>Operador</dt><dd>{{ pago.operador }}</dd></div>
+        <div><dt>Fecha del pago</dt><dd>{{ pago.fecha | date:'dd/MM/yyyy HH:mm':horaColombia }}</dd></div>
+        <div><dt>Inicio</dt><dd>{{ pago.vigencia.inicio | date:'dd/MM/yyyy HH:mm':horaColombia }}</dd></div>
+        <div><dt>Vencimiento</dt><dd>{{ pago.vigencia.vencimiento | date:'dd/MM/yyyy HH:mm':horaColombia }}</dd></div>
+      </dl>
+      @if (pago.estancias_regularizadas.length) {
+        <p>Mora regularizada sin recargo · Salidas {{ pago.estancias_regularizadas.join(', ') }}</p>
+      }
+      <button type="button" (click)="recibo.set(null)">Cerrar comprobante</button>
+    </article>
+  }
+</section>

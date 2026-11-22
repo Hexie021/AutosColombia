@@ -26,6 +26,12 @@ export const routes: Routes = [
     loadComponent: () => import('./operadores/operadores').then((m) => m.Operadores),
   },
   {
+    path: 'gestion/pagos',
+    canActivate: [requiereOperador],
+    title: 'Pagos | Autos Colombia',
+    loadComponent: () => import('./pagos/pagos').then((m) => m.Pagos),
+  },
+  {
     path: 'gestion/celdas',
     canActivate: [requiereOperador],
     title: 'Celdas | Autos Colombia',

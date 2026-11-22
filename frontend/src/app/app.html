@@ -11,6 +11,7 @@
     <nav aria-label="Navegación principal">
       <a routerLink="/control-acceso" routerLinkActive="active">Entrada y salida de vehículos</a>
       @if (operador()) {
+        <a routerLink="/gestion/pagos" routerLinkActive="active">Pagos</a>
         <a routerLink="/gestion/celdas" routerLinkActive="active">Gestión de celdas</a>
         <div class="account-actions">
           <a routerLink="/mi-cuenta" routerLinkActive="active">Mi cuenta</a>

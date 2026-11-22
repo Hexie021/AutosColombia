@@ -18,6 +18,7 @@ interface EstanciaEA1 {
   operador_entrada: string;
   operador_salida: string | null;
   mora_pendiente: boolean;
+  mora_regularizada?: boolean;
 }
 interface EstadoEA1 {
   placa: string;

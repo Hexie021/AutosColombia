@@ -1,0 +1,51 @@
+section { padding: 24px 0 32px; }
+h1 { margin: 0 0 16px; font-size: 28px; }
+h2 { margin: 0 0 16px; font-size: 21px; }
+.panel {
+  background: #fff;
+  border: 1px solid #d7d7da;
+  border-radius: 8px;
+  margin-block: 16px;
+  padding: 20px;
+}
+.vistas, .filtros, .acciones {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 12px;
+}
+label { display: grid; gap: 6px; font-weight: 600; }
+input, button {
+  min-height: 42px;
+  padding: 9px 12px;
+  border: 1px solid #8a8a93;
+  border-radius: 6px;
+  background: #fff;
+  color: inherit;
+  font: inherit;
+}
+input { min-width: 0; width: 100%; }
+button { font-weight: 600; cursor: pointer; }
+button:disabled { cursor: default; opacity: .6; }
+:focus-visible { outline: 3px solid #986900; outline-offset: 2px; }
+.principal, button[aria-pressed='true'] { background: #ffcf16; border-color: #ad8500; }
+.datos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 175px), 1fr));
+  gap: 16px;
+  margin: 0 0 18px;
+}
+dt { color: #54545c; }
+dd { margin: 4px 0 0; font-weight: 600; }
+.aviso { padding: 10px 14px; border: 1px solid; border-radius: 6px; }
+.aviso p { margin: 6px 0 0; }
+.mora { background: #fff7dc; color: #6c4300; margin-bottom: 16px; }
+.error { background: #fff1f1; color: #8e1818; }
+.confirmacion { border-top: 1px solid #d7d7da; }
+.tabla { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #d7d7da; }
+.paginacion { align-items: center; margin-top: 12px; }
+@media (max-width: 540px) {
+  .filtros > label { flex: 1 1 100%; }
+}

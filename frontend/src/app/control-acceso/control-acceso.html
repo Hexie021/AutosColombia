@@ -243,6 +243,9 @@
                     @if (stay.mora_pendiente) {
                       <strong class="mora-badge">Mora pendiente</strong>
                       <div>{{ stay.operador_salida }}</div>
+                    } @else if (stay.mora_regularizada) {
+                      <strong>Mora regularizada</strong>
+                      <div>{{ stay.operador_salida }}</div>
                     } @else {
                       —
                     }
@@ -289,6 +292,8 @@
           <p class="notice warning" role="status">
             <strong>Mora pendiente.</strong> La salida quedó registrada con el plan vencido.
           </p>
+        } @else if (receipt.mora_regularizada) {
+          <p><strong>Mora regularizada.</strong> La salida se registró con el plan vencido.</p>
         }
       }
       <p>
